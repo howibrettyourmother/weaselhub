@@ -122,3 +122,4 @@ td.w{white-space:normal}
 .gl{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--for);margin-left:5px;vertical-align:middle;animation:glp 1.6s ease-in-out infinite}@keyframes glp{50%{opacity:.25}}
 @media (prefers-reduced-motion:reduce){.gl,.lve.new{animation:none}}
 .lvs,.lvg,.lvl,.lvfin{max-width:100%;min-width:0}#view{overflow-x:clip}
+.ltot{color:var(--ink);font-weight:600}.vr{font-size:10px;color:var(--gold);border:1px solid rgba(255,199,44,.4);border-radius:4px;padding:0 3px;margin-left:3px;cursor:pointer;font-weight:400}.vr.on{border:0;padding:0;color:var(--mute)}
