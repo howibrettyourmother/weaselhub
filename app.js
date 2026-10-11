@@ -71,8 +71,8 @@ function pinfo(id){
   if(db)return {id:id,n:db.n,pos:db.p[0],fp:db.p,team:db.t,inj:IJ.inj,body:db.b,stsrc:IJ.src,active:IJ.active};
   return {id:id,n:'Player '+id,pos:'?',fp:[],team:null,inj:null,unknown:true}}
 function head(id,cls){var pi=pinfo(id);
-  if(pi.pos==='DEF')return '<img class="hs def '+(cls||'')+'" loading="lazy" alt="" src="https://sleepercdn.com/images/team_logos/nfl/'+String(id).toLowerCase()+'.png">';
-  return '<img class="hs '+(cls||'')+'" loading="lazy" alt="" src="https://sleepercdn.com/content/nfl/players/thumb/'+id+'.jpg" onerror="this.style.visibility=\'hidden\'">'}
+  if(pi.pos==='DEF')return '<img class="hs def '+(cls||'')+'" loading="lazy" alt="" src="https://sleepercdn.com/images/team_logos/nfl/'+String(id).toLowerCase()+'.png" onerror="this.onerror=null;this.src=\'icons/icon-192.png?v=2\';this.style.opacity=.35">';
+  return '<img class="hs '+(cls||'')+'" loading="lazy" alt="" src="https://sleepercdn.com/content/nfl/players/thumb/'+id+'.jpg" onerror="this.onerror=null;this.src=\'icons/icon-192.png?v=2\';this.style.opacity=.35">'}
 function posChip(pos){var c=/^(QB|RB|WR|TE|K|DEF)$/.test(pos)?pos:'IDP';return '<span class="pos '+c+'">'+esc(pos||'?')+'</span>'}
 
 // ---------------- schedule (ESPN public scoreboard; CORS *) ----------------
@@ -103,6 +103,8 @@ function loadGames(){
       if(!Object.keys(g).length)throw new Error('empty');D.games=g;D.gamesOk=true;D.gamesSrc='Sleeper';D.errors.push('ESPN scoreboard unavailable; using Sleeper schedule (no kickoff times, so Sunday slots are merged and live progress is approximate).')})
     .catch(function(){D.gamesOk=false;D.errors.push('Schedule unavailable ('+e.message+'); slot grouping/live status degraded.')})})}
 function gameOf(team){return team?D.games[team]:null}
+function gmk(state){return state==='post'?'<i class="gf" title="game final">✓</i>':state==='in'?'<i class="gl" title="playing now"></i>':''}
+function gmark(team){var g=gameOf(team);return g?gmk(g.state):''}
 
 // ---------------- projections (Sleeper unofficial; CORS *) ----------------
 function loadProj(){
@@ -339,7 +341,7 @@ function bankLabel(me,op){var order=SLOTS.map(function(s){return s[0]}),done={},
 function scoreCard(c,prev){var L=c.L,me=c.me,op=c.op,mo=ownerOf(L,L.me),oo=ownerOf(L,L.opp),started=me.ytp<me.lines.length||op.ytp<op.lines.length,anyLive=me.live+op.live>0;
   var mp=started?me.actSum:me.proj,opp=started?op.actSum:op.proj,ch=prev&&(Math.abs(prev[0]-mp)>0.01||Math.abs(prev[1]-opp)>0.01);
   function tm(o,s,pts,lead){return '<div class="tm'+(lead?' lead':'')+'">'+(o.av?'<img class="av" loading="lazy" alt="" src="'+o.av+'">':'<span class="av"></span>')+'<div class="nm">'+esc(o.name)+'<small>'+s.ytp+' yet to play'+(s.live?' · '+s.live+' live':'')+'</small></div><div class="pts"><b>'+f1(pts)+'</b><small>'+(started?'proj '+f1(s.fin):'projected')+'</small></div></div>'}
-  function lu(s){return s.lines.map(function(l){return '<div class="p '+l.state+'"><span><span class="slot">'+esc(l.pi.pos)+'</span>'+esc(l.pi.n)+'</span><b>'+(l.state==='pre'?f1(l.proj):f1(l.act))+'</b></div>'}).join('')}
+  function lu(s){return s.lines.map(function(l){return '<div class="p '+l.state+'"><span><span class="slot">'+esc(l.pi.pos)+'</span><span class="'+(l.state==='post'?'gdone':'')+'">'+esc(l.pi.n)+gmk(l.state)+'</span></span><b>'+(l.state==='pre'?f1(l.proj):f1(l.act))+'</b></div>'}).join('')}
   return '<details class="sc'+(ch?' flash':'')+'" data-k="c'+L.id+'"'+(UI.openCards[L.id]?' open':'')+'><summary><div class="ln"><span>'+esc(L.name)+'</span><span>'+(anyLive?'<span class="live">● LIVE</span>':started?(me.rem+op.rem<0.05?'FINAL':bankLabel(me,op)):'WK '+D.week)+'</span></div>'+tm(mo,me,mp,me.fin>=op.fin)+tm(oo,op,opp,op.fin>me.fin)+'<div class="wp"><b style="color:'+(me.odds>=0.5?'var(--for)':'var(--ag)')+'">'+pct(me.odds)+'</b><div class="bar"><i style="width:'+Math.round(me.odds*100)+'%"></i></div><span class="muted">win odds</span></div>'+(typeof ROASTS!=='undefined'?'<div class="roast">'+ROASTS.card(c,started)+'</div>':'')+'</summary><div class="lu"><div><h4>You</h4>'+lu(me)+'</div><div><h4>'+esc(oo.name)+'</h4>'+lu(op)+'</div></div></details>'}
 var PREV={};
 function renderSunday(el){
