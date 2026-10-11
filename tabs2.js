@@ -51,7 +51,7 @@ function renderHome(el){if(!D.leagues.length){el.innerHTML='<div class="panel em
     var live='';if(c){var started=c.me.ytp<c.me.lines.length||c.op.ytp<c.op.lines.length,anyLive=c.me.live+c.op.live>0;
       live='<div class="small" style="margin-top:4px">Wk '+D.week+' vs <b>'+esc(ownerOf(L,L.opp).name)+'</b>: '+(started?f1(c.me.actSum)+'–'+f1(c.op.actSum)+' · ':'')+'proj '+f1(c.me.fin)+'–'+f1(c.op.fin)+' · <b style="color:'+(c.me.odds>=0.5?'var(--for)':'var(--ag)')+'">'+pct(c.me.odds)+'</b> '+(anyLive?'<span class="live">● LIVE</span>':started?'<span class="muted">'+bankLabel(c.me,c.op)+'</span>':'')+'</div>'}
     var o=odds&&odds[L.me];
-    return '<a class="box" style="display:block;color:inherit" href="#sunday"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:2px 0">'+esc(L.name)+'</h3><span class="small muted">'+esc(ownerOf(L,L.me).name)+'</span></div>'+
+    return '<a class="box" style="display:block;color:inherit" href="#sunday"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:2px 0">'+esc(L.name)+hq(L)+'</h3><span class="small muted">'+esc(ownerOf(L,L.me).name)+'</span></div>'+
      '<div class="mini"><div><b>'+me.w+'-'+me.l+(me.t?'-'+me.t:'')+'</b><small>RECORD</small></div><div><b>#'+me.rank+'</b><small>OF '+n+'</small></div><div><b>'+(o?pct(o.po):'…')+'</b><small>PLAYOFFS</small></div><div><b>'+(o?pct(o.top):'…')+'</b><small>#1 SEED</small></div></div>'+
      '<div class="small muted">'+f1(me.pf)+' PF (#'+me.pfRank+') · top '+pt+' make it</div>'+live+(L.calls?'<div class="small" style="margin-top:3px">🧠 '+(L.calls.calls.length?'<b style="color:var(--gold)">'+callsSummary(L.calls)+'</b>':callsSummary(L.calls))+'</div>':'')+'</a>'}
   var odds={};

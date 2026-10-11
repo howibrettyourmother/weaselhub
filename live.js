@@ -115,7 +115,7 @@ function wlDetail(sd,lab,cls){var pl=sd.lines.filter(function(l){return l.state=
     (dn.length?'<div class="wlh wldn">Done: '+dn.map(function(l){return esc(l.pi.n.split(' ').slice(-1)[0])+' '+f1(l.act)}).join(' · ')+'</div>':'')+'</div>'}
 var WLO={};
 function whoLeft(){return D.leagues.map(function(L){var c=(D.M&&D.M.cards||[]).filter(function(x){return x.L.id===L.id})[0];if(!c)return '';
-  return '<details class="wl" data-wl="'+L.id+'"'+(WLO[L.id]?' open':'')+'><summary><div class="wln">'+esc(L.name)+' <span class="wlx">▾</span></div><div class="wlg">'+wlTxt('you',wlSide(c.me),'for')+wlTxt('them',wlSide(c.op),'ag')+'</div>'+(lateMath(c)||'')+'</summary>'+
+  return '<details class="wl" data-wl="'+L.id+'"'+(WLO[L.id]?' open':'')+'><summary><div class="wln">'+esc(L.name)+hq(L)+' <span class="wlx">▾</span></div><div class="wlg">'+wlTxt('you',wlSide(c.me),'for')+wlTxt('them',wlSide(c.op),'ag')+'</div>'+(lateMath(c)||'')+'</summary>'+
     (WLO[L.id]?wlDetail(c.me,'You','for')+wlDetail(c.op,esc(ownerOf(L,L.opp).name),'ag'):'')+'</details>'}).join('')}
 function tracker(){var mine={};D.leagues.forEach(function(L){var S=sides(L);[['me',S.me],['op',S.op]].forEach(function(z){if(z[1])(z[1].starters||[]).forEach(function(id){if(!id||id==='0')return;var t=pinfo(id).team,g=gameOf(t);if(!g)return;var o=mine[g.id]=mine[g.id]||{g:g,me:{},op:{}};o[z[0]][pinfo(id).pos==='DEF'?t+' D/ST':pinfo(id).n.split(' ').slice(-1)[0]]=1})})});
   var gs=Object.keys(mine).map(function(k){return mine[k]});if(!gs.length)return '';
