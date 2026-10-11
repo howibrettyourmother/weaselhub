@@ -21,7 +21,6 @@ var BAD_INJ={Out:'OUT',Doubtful:'DOUBTFUL',IR:'IR',PUP:'PUP',Sus:'SUSP',NA:'N/A'
 function phi(z){return Math.exp(-z*z/2)/2.5066282746}
 function Phi(z){var t=1/(1+0.2316419*Math.abs(z)),d=0.3989423*Math.exp(-z*z/2),p=d*t*(0.3193815+t*(-0.3565638+t*(1.781478+t*(-1.821256+t*1.330274))));return z>0?1-p:p}
 var ESPN_FIX={WSH:'WAS',LA:'LAR',JAC:'JAX'};
-var ROAST=['folded like a lawn chair','got cooked, your pick says thanks','took the L like a champ (for you)','tanking beautifully, keep it up','lost again, the draft room is warming up','faceplanted; that pick just got shinier'];
 
 // ---------------- global state ----------------
 var D={user:null,season:null,week:null,leagues:[],skipped:[],proj:{},games:{},byes:{},players:null,errors:[],at:0};
@@ -137,19 +136,38 @@ function pairOdds(A,B){var tot=Math.max(1,A.proj+B.proj),s0=Math.max(10,0.13*tot
 function preOdds(A,B){var s0=Math.max(10,0.13*Math.max(1,A.proj+B.proj)),m=A.proj-B.proj;return {lev:phi(m/s0)/s0,p:Phi(m/s0)}}
 
 // Pick Watch: future 1st/2nd picks Brett holds from other teams
-function standings(L){var arr=Object.keys(L.rosters).map(function(k){var r=L.rosters[k],s=r.settings||{};return {rid:+k,w:s.wins||0,l:s.losses||0,t:s.ties||0,pf:(s.fpts||0)+(s.fpts_decimal||0)/100}});
+// ---------------- draft order: MAX PF (Sleeper "potential points") ----------------
+// Verified against every league's last completed rookie draft: picks 1..N go to the NON-PLAYOFF teams by LOWEST max PF,
+// then playoff teams (projected here by seed, worst seed first). Set DRAFT_ORDER='all' to rank the whole league by max PF.
+var DRAFT_ORDER='nonplayoff';
+function potLine(L,ids,val){// best possible lineup (greedy, most restrictive slot first) -> {tot, set}
+  var left=ids.slice(),tot=0,set={};L.slots.map(function(sl){return ELIG[sl]||[sl]}).sort(function(a,b){return a.length-b.length}).forEach(function(e){var bi=-1,bv=-1;
+    left.forEach(function(id,i){var fp=pinfo(id).fp||[];var v=val(id);if(fp.some(function(x){return e.indexOf(x)>=0})&&v>bv){bv=v;bi=i}});if(bi>=0){tot+=bv;set[left[bi]]=1;left.splice(bi,1)}});return {tot:tot,set:set}}
+function standings(L){var key=D.at+':'+(L.mu&&L.mu.length);if(L._st&&L._stk===key)return L._st;
+  var pws=(L.raw.settings||{}).playoff_week_start||15,pt=(L.raw.settings||{}).playoff_teams||Math.floor(Object.keys(L.rosters).length/2);
+  var arr=Object.keys(L.rosters).map(function(k){var r=L.rosters[k],s=r.settings||{};var g=(s.wins||0)+(s.losses||0)+(s.ties||0),mpf=(s.ppts||0)+(s.ppts_decimal||0)/100;
+    var m=(L.mu||[]).filter(function(x){return x.roster_id===+k})[0],wk={tot:0,rem:0,set:{}};
+    if(m&&g<D.week&&D.week<pws){var lines={};(m.players||[]).filter(function(id){return (r.reserve||[]).indexOf(id)<0&&(r.taxi||[]).indexOf(id)<0}).forEach(function(id){lines[id]=playerLine(L,id,m.players_points)});
+      var ids=Object.keys(lines),fin=potLine(L,ids,function(id){return lines[id].fin});wk={tot:fin.tot,set:fin.set,lines:lines,rem:ids.reduce(function(a,id){return a+(fin.set[id]?lines[id].rem:0)},0)}}
+    var avg=g?mpf/g:wk.tot,after=Math.max(0,(pws-1)-Math.max(D.week,g));
+    return {rid:+k,w:s.wins||0,l:s.losses||0,t:s.ties||0,g:g,pf:(s.fpts||0)+(s.fpts_decimal||0)/100,mpf:mpf,avg:avg,wk:wk,after:after,mpfEnd:mpf+wk.tot+after*avg,sdEnd:Math.max(8,0.12*avg*Math.sqrt(after+1))}});
   var pfr=arr.slice().sort(function(a,b){return b.pf-a.pf});pfr.forEach(function(x,i){x.pfRank=i+1});
-  var asc=arr.slice().sort(function(a,b){return (a.w+a.t/2)-(b.w+b.t/2)||a.pf-b.pf});asc.forEach(function(x,i){x.slot=i+1});
-  var desc=asc.slice().reverse();desc.forEach(function(x,i){x.rank=i+1});
-  var o={};arr.forEach(function(x){o[x.rid]=x});return o}
+  var mr=arr.slice().sort(function(a,b){return a.mpf-b.mpf});mr.forEach(function(x,i){x.mpfRank=i+1});// 1 = lowest max PF
+  var desc=arr.slice().sort(function(a,b){return (b.w+b.t/2)-(a.w+a.t/2)||b.pf-a.pf});desc.forEach(function(x,i){x.rank=i+1;x.po=i<pt});
+  var order=DRAFT_ORDER==='all'?arr.slice().sort(function(a,b){return a.mpfEnd-b.mpfEnd}):
+    desc.filter(function(x){return !x.po}).sort(function(a,b){return a.mpfEnd-b.mpfEnd}).concat(desc.filter(function(x){return x.po}).reverse());
+  order.forEach(function(x,i){x.slot=i+1});
+  // how much is a team's draft slot still in play? pNon ~ chance they miss the playoffs; bubble ~ how much their W/L matters for that
+  arr.forEach(function(x){var d=x.rank-(pt+0.5);x.pNon=DRAFT_ORDER==='all'?1:1/(1+Math.exp(-d/1.1));x.bubble=DRAFT_ORDER==='all'?0:Math.exp(-d*d/4)});
+  var o={};arr.forEach(function(x){o[x.rid]=x});L._st=o;L._stk=key;return o}
+function slotsPerPoint(st,rid){var me=st[rid],t=0;Object.keys(st).forEach(function(k){var x=st[k];if(+k===rid)return;var sp=Math.sqrt(me.sdEnd*me.sdEnd+x.sdEnd*x.sdEnd);t+=x.pNon*phi((me.mpfEnd-x.mpfEnd)/sp)/sp});return t}
 function pickWatch(L){var yr=+L.raw.season,st=standings(L),n=Object.keys(L.rosters).length,pt=(L.raw.settings||{}).playoff_teams||Math.floor(n/2);
-  var draftDone=true;// current-season rookie draft happens before the season; future = season+1, +2
   var out=[];(L.traded||[]).forEach(function(t){if(t.owner_id!==L.me||t.roster_id===L.me)return;var s=+t.season;if(s<=yr||s>yr+2||t.round>2)return;
     var x=st[t.roster_id]||{};var near=s===yr+1;
-    // leverage: 1sts > 2nds, more when bottom-feeding/in the slot race, less for clear contenders
-    var pos=x.slot?(1-(x.slot-1)/Math.max(1,n-1)):0.5;// 1 = worst team
+    // leverage: 1sts > 2nds; more for teams near the bottom of the max-PF race; less for clear contenders (playoff teams pick late regardless)
+    var pos=x.slot?(1-(x.slot-1)/Math.max(1,n-1)):0.5;// 1 = picks first
     var w=(t.round===1?1:0.4)*(near?1:0.5)*(0.3+0.7*pos);
-    out.push({season:t.season,round:t.round,rid:t.roster_id,st:x,n:n,pt:pt,w:w,label:t.season+' '+(t.round===1?'1st':'2nd'),inPO:x.rank<=pt})});
+    out.push({season:t.season,round:t.round,rid:t.roster_id,st:x,n:n,pt:pt,w:w,label:t.season+' '+(t.round===1?'1st':'2nd'),near:near,inPO:x.po,spp:near?slotsPerPoint(st,t.roster_id):0})});
   return out}
 
 // Rival tracker: nearest standings competitors (within a game of Brett), excluding Brett
@@ -157,7 +175,8 @@ var RIVAL_K=0.12;
 function rivals(L){var st=standings(L),me=st[L.me];if(!me)return [];var pt=(L.raw.settings||{}).playoff_teams||6;
   return Object.keys(st).map(function(k){return st[k]}).filter(function(x){return x.rid!==L.me&&Math.abs((x.w+x.t/2)-(me.w+me.t/2))<=1}).sort(function(a,b){return Math.abs(a.w-me.w)-Math.abs(b.w-me.w)||Math.abs(a.pf-me.pf)-Math.abs(b.pf-me.pf)}).slice(0,3).map(function(x){x.pt=pt;return x})}
 // ---------------- impact aggregation ----------------
-var PICK_K=0.35;// a 1st from the worst team losing ~= 35% of the value of your own win
+var PICK_K=0.35;// W/L part: a 1st-round team on the playoff bubble losing ~= 35% of your own win
+var MPF_K=0.35;// max-PF part: value (in your-win units) of moving that 1st one full slot
 function computeAll(){
   var players={},cards=[],flags=[],picks=[];
   D.leagues.forEach(function(L){
@@ -165,7 +184,7 @@ function computeAll(){
     var pw=pickWatch(L);L.picks=pw;
     // stake: value to Brett of roster X winning its matchup
     var stake={},why={};stake[L.me]=1;why[L.me]=['me'];
-    pw.forEach(function(p){stake[p.rid]=(stake[p.rid]||0)-PICK_K*p.w;(why[p.rid]=why[p.rid]||[]).push('🎯 for the pick ('+L.name+', '+p.label+')')});
+    pw.forEach(function(p){var b=p.near?(p.st&&p.st.bubble)||0:0;if(b>0.05){stake[p.rid]=(stake[p.rid]||0)-PICK_K*p.w*b;(why[p.rid]=why[p.rid]||[]).push('🎯 '+p.label+' (playoff bubble)')}});
     L.rivals=rivals(L);L.rivals.forEach(function(x){if(x.rid===L.opp)return;stake[x.rid]=(stake[x.rid]||0)-RIVAL_K;(why[x.rid]=why[x.rid]||[]).push('👀 playoff-race rival')});
     var pairs={};Object.keys(sides).forEach(function(k){var s=sides[k];(pairs[s.mid]=pairs[s.mid]||[]).push(s)});
     Object.keys(pairs).forEach(function(mid){var pr=pairs[mid];if(pr.length!==2)return;var A=pr[0],B=pr[1],od=pairOdds(A,B),o0=preOdds(A,B);
@@ -178,6 +197,10 @@ function computeAll(){
         var P=players[l.id]=players[l.id]||{id:l.id,line:l,ent:[],net:0,netBase:0};
         P.ent.push({L:L,imp:imp,base:base,who:who,tag:tag,proj:l.proj,act:l.act,state:l.state,winp:side.rid===L.me?side.odds:null});
         P.net+=imp;P.netBase+=base;if(l.state==='in')P.line=l})})});
+    var stt=standings(L);pw.forEach(function(p){var x=stt[p.rid];if(!x||!x.wk.lines||!p.spp)return;var k=MPF_K*p.w*x.pNon*p.spp;if(k<1e-6)return;
+      Object.keys(x.wk.lines).forEach(function(id){var l=x.wk.lines[id],wOpt=x.wk.set[id]?1:0.35,imp=-k*wOpt*l.rem,base=-k*wOpt*l.proj;if(Math.abs(base)<1e-4)return;
+        var P=players[id]=players[id]||{id:id,line:l,ent:[],net:0,netBase:0};
+        P.ent.push({L:L,imp:imp,base:base,who:'pick',tag:'🎯 for the pick ('+L.name+', '+p.label+') · max PF'+(x.wk.set[id]?'':' (bench counts)'),proj:l.proj,act:l.act,state:l.state});P.net+=imp;P.netBase+=base})});
     var me=sides[L.me],op=sides[L.opp];if(me&&op)cards.push({L:L,me:me,op:op});
     flags=flags.concat(startSit(L,me));
     pw.forEach(function(p){var s=sides[p.rid];picks.push({L:L,p:p,side:s,opp:s&&s.vs})});
@@ -255,7 +278,7 @@ function renderSunday(el){
   var flags=M.flags.slice().sort(function(a,b){var o={hi:0,md:1,lo:2};return o[a.sev]-o[b.sev]});
   var flagH=flags.length?flags.map(function(f){return '<div class="flag sev-'+f.sev+'"><div class="ic">'+f.ic+'</div><div class="fx"><div class="ft">'+f.t+'</div><div class="small muted">'+f.d+'</div></div><a class="small" href="'+f.link+'" target="_blank" rel="noopener">'+esc(f.L.name)+' ↗</a></div>'}).join(''):'<div class="empty">All lineups look clean ✅</div>';
   var pk=M.picks.filter(function(x){return x.p.round<=2&&+x.p.season===+x.L.raw.season+1}).sort(function(a,b){return b.p.w-a.p.w});
-  var pkH=pk.length?'<section class="panel"><h2>🎯 Pick Watch <small><a href="#picks">ALL PICKS →</a></small></h2><div class="hint">Teams whose picks you own. You want them to lose; their starters are folded into Root Against.</div>'+pk.slice(0,4).map(pickRow).join('')+(pk.length>4?'<a class="small" href="#picks">+'+(pk.length-4)+' more on Picks →</a>':'')+'</section>':'';
+  var pkH=pk.length?'<section class="panel"><h2>🎯 Pick Watch <small><a href="#picks">ALL PICKS →</a></small></h2><div class="hint">Rookie order = lowest <b>max PF</b> (potential points) first among non-playoff teams. Every point these teams score raises their max PF, <b>bench included</b>, so all their rostered players are folded into Root Against (bench guys at a discount, since only their best lineup counts). Their W/L only matters near the playoff line.</div>'+pk.slice(0,4).map(pickRow).join('')+(pk.length>4?'<a class="small" href="#picks">+'+(pk.length-4)+' more on Picks →</a>':'')+'</section>':'';
   el.innerHTML=banner+'<section class="panel"><h2>📺 Scoreboard <small>'+cards.length+' LEAGUES · EXP. WINS '+f1(rec.x)+'</small></h2><div class="sbs">'+cardsH+'</div><div class="hint" style="margin-top:6px">Tap a card for both lineups. Sorted by closest game. '+(isWindow()?'Auto-refreshing every 60s.':'Auto-refresh kicks in during game windows.')+'</div></section>'+
    newsStripHTML()+
    '<section class="panel"><h2>📣 Rooting Guide <small>WEEK '+D.week+'</small></h2>'+chips+'<div class="cols">'+lst(fr,'for','ROOT FOR')+lst(ag,'ag','ROOT AGAINST')+'</div><div class="hint">Impact = projected points still to come × how close the matchup is (win-probability swing), summed across leagues. Tap a player for per-league effects.</div></section>'+
@@ -265,12 +288,19 @@ function renderSunday(el){
   $$('[data-more]',el).forEach(function(b){b.onclick=function(){UI.all[b.getAttribute('data-more')]=1;renderSunday(el)}});
   $$('details',el).forEach(function(d){d.addEventListener('toggle',function(){var k=d.getAttribute('data-k')||'';if(k[0]==='c')UI.openCards[k.slice(1)]=d.open;else UI.open[k]=d.open})});
 }
+var PROAST=['only {p} potential points this week. That pick just got shinier.','max PF pace of a team that forgot to set a lineup. Keep it up.','scored {p} even with a perfect lineup. The draft room is warming up.','the bench is as empty as the starting lineup. Love that for you (and your pick).'];
 function pickRow(x){var L=x.L,p=x.p,o=ownerOf(L,p.rid),st=p.st||{},s=x.side,op=x.opp;var live='';
-  if(s&&op){var started=s.lines.some(function(l){return l.state!=='pre'})||op.lines.some(function(l){return l.state!=='pre'});var done=s.rem+op.rem<0.05;
-    var oo=op.rid===L.me?'YOU':ownerOf(L,op.rid).name;live='vs '+esc(oo)+': '+(started?f1(s.actSum)+'–'+f1(op.actSum):f1(s.proj)+'–'+f1(op.proj)+' proj')+' · '+pct(s.odds)+' to win';
-    if(done&&s.actSum<op.actSum)live+=' · <b style="color:var(--for)">'+ROAST[(+p.rid+D.week)%ROAST.length]+'</b>'}
-  var arrow=s?(s.odds<0.5?'<span style="color:var(--for)" title="Likely to lose: pick trending better">▲</span>':'<span style="color:var(--ag)" title="Likely to win: pick trending worse">▼</span>'):'';
-  return '<div class="flag"><div class="ic">'+arrow+'</div><div class="fx"><div class="ft">'+esc(o.name)+' <span class="pill y">'+esc(p.label)+'</span> <span class="muted small">'+esc(L.name)+'</span></div><div class="small muted">'+st.w+'-'+st.l+(st.t?'-'+st.t:'')+' · PF rank '+st.pfRank+'/'+p.n+' · proj pick #'+st.slot+(p.inPO?' (playoff spot)':'')+'</div><div class="small">'+live+'</div></div></div>'}
+  var all=standings(L),avgWk=0,n=0;Object.keys(all).forEach(function(k){if(all[k].wk.tot){avgWk+=all[k].wk.tot;n++}});avgWk=n?avgWk/n:0;
+  if(p.near&&st.wk&&st.wk.tot){var started=s&&(s.lines.some(function(l){return l.state!=='pre'})||(op&&op.lines.some(function(l){return l.state!=='pre'})));
+    live='This week: best-lineup pts '+(started?'(live + proj) ':'proj ')+f1(st.wk.tot)+' (league avg '+f1(avgWk)+')';
+    if(s&&op){var oo=op.rid===L.me?'YOU':ownerOf(L,op.rid).name;live+=' · vs '+esc(oo)+(st.bubble>0.05?' ('+pct(s.odds)+' to win, matters for the playoff line)':'')}
+    if(s&&s.rem+(op?op.rem:0)<0.05&&st.wk.tot<avgWk*0.9)live+=' · <b style="color:var(--for)">'+fill1(PROAST[(+p.rid+D.week)%PROAST.length],{p:f1(st.wk.tot)})+'</b>'}
+  var good=p.near&&st.wk&&st.wk.tot?st.wk.tot<avgWk:null;
+  var arrow=good==null?'':good?'<span style="color:var(--for)" title="Below-average potential points this week: pick trending better">▲</span>':'<span style="color:var(--ag)" title="Above-average potential points this week: pick trending worse">▼</span>';
+  return '<div class="flag"><div class="ic">'+arrow+'</div><div class="fx"><div class="ft">'+esc(o.name)+' <span class="pill y">'+esc(p.label)+'</span> <span class="muted small">'+esc(L.name)+'</span></div><div class="small muted">Max PF <b style="color:var(--ink)">'+f1(st.mpf)+'</b> ('+ordn(st.mpfRank)+' lowest of '+p.n+') · pace to '+int0(st.mpfEnd)+' · '+st.w+'-'+st.l+(st.t?'-'+st.t:'')+(p.near&&p.inPO?' (in a playoff spot, picks late)':'')+(p.near?' · proj pick <b style="color:var(--gold)">#'+st.slot+'</b>':' · <i>slot set by next season\'s max PF</i>')+'</div><div class="small">'+live+'</div></div></div>'}
+function fill1(t,o){return t.replace(/\{(\w+)\}/g,function(m,k){return esc(o[k])})}
+function ordn(n){var s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0])}
+function int0(n){return Math.round(+n||0).toLocaleString('en-US')}
 function rivalHTML(M){var rows=[];D.leagues.forEach(function(L){var sides={};L.mu.forEach(function(m){sides[m.roster_id]=m});(L.rivals||[]).forEach(function(x){var o=ownerOf(L,x.rid),m=sides[x.rid],om=m&&L.mu.filter(function(y){return y.matchup_id===m.matchup_id&&y.roster_id!==x.rid})[0];
     var vs=om?(om.roster_id===L.me?'YOU (already Root Against)':ownerOf(L,om.roster_id).name):'—';
     var c=M.cards.filter(function(c){return c.L===L})[0];
