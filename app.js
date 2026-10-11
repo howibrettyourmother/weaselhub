@@ -237,7 +237,7 @@ function computeAll(){
         var P=players[id]=players[id]||{id:id,line:l,ent:[],net:0,netBase:0};
         P.ent.push({L:L,imp:imp,base:base,who:'pick',tag:'🎯 for the pick ('+L.name+', '+p.label+') · max PF'+(x.wk.set[id]?'':' (bench counts)'),proj:l.proj,act:l.act,state:l.state});P.net+=imp;P.netBase+=base})});
     var me=sides[L.me],op=sides[L.opp];if(me&&op)cards.push({L:L,me:me,op:op});
-    flags=flags.concat(startSit(L,me).filter(function(f){return f.sev!=='md'}));L.calls=startSitCalls(L);
+    flags=flags.concat(startSit(L,me).filter(function(f){return f.sev!=='md'}));L.calls=startSitCalls(L);try{logCalls(L.calls)}catch(e){}
     pw.forEach(function(p){var s=sides[p.rid];picks.push({L:L,p:p,side:s,opp:s&&s.vs})});
   });
   var list=Object.keys(players).map(function(k){var P=players[k];P.conf=P.ent.some(function(e){return e.base>0.02})&&P.ent.some(function(e){return e.base<-0.02});
@@ -342,6 +342,21 @@ function rowHTML(P,side,max){var l=P.line,pi=l.pi,v=P.key,w=Math.max(4,Math.roun
   var live=l.state!=='pre'&&l.g?' · <b>'+f1(P.ent[0].act)+'</b> pts':'';
   return '<details class="row '+(P.done?'done':'')+'" data-k="r'+P.id+'"'+(UI.open['r'+P.id]?' open':'')+'><summary>'+head(P.id)+'<div class="mid"><div class="pn">'+esc(pi.n)+' '+(pi.inj?'<span class="inj">'+esc(pi.inj.toUpperCase().slice(0,4))+'</span>':'')+'</div><div class="meta">'+posChip(pi.pos)+'<span>'+esc(pi.team||'FA')+' '+esc(oppStr(l))+'</span>'+gameTag(l)+'<span class="lgs">'+P.nL+' league'+(P.nL>1?'s':'')+'</span>'+tags+'</div></div><div class="imp"><div class="lbl">'+(P.done?'Done':label(v))+'</div><div class="ibar"><i style="width:'+w+'%"></i></div><div class="pp">'+f1(l.proj)+' proj'+live+'</div></div></summary><div class="det">'+
     ents.map(function(e){var sg=(P.done?e.base:e.imp);return '<div><span><b>'+esc(e.L.name)+'</b> · '+esc(e.tag)+'</span><span class="'+(sg>=0?'pe':'ne')+'">'+(sg>=0?'+':'−')+f1(Math.abs(sg)*100)+'% swing</span></div>'}).join('')+'</div></details>'}
+// remember start/sit calls made before lock so the weekly report card can say whether they were followed
+function logCalls(R){if(!R||!R.L)return;var L=R.L,k='wh:calls:'+D.season+':'+D.week+':'+L.id,o=LS.get(k)||{},m=L.mu.filter(function(x){return x.roster_id===L.me})[0],st=(m&&m.starters)||[],now=Date.now(),ch=false,cur={};
+  (R.calls||[]).forEach(function(c){if(!c.y)return;var key=c.x.id+'>'+c.y.id;cur[key]=1;var e=o[key];if(!e||e.g!==+c.gain.toFixed(1)||e.lvl!==c.lvl){o[key]={x:c.x.id,y:c.y.id,lvl:c.lvl,g:+c.gain.toFixed(1),at:now};ch=true}});
+  function lk(id){var g=gameOf(pinfo(id).team);return g&&(g.state!=='pre'||g.kick<=now)}
+  Object.keys(o).forEach(function(key){if(cur[key])return;var e=o[key];if(lk(e.x)||lk(e.y))return;if(st.indexOf(e.x)<0){delete o[key];ch=true}});// withdrawn (not followed, no longer recommended)
+  if(ch)LS.set(k,o)}
+// late-game math: when few players remain (or SNF/MNF), "You need X from Waddle to win (≈38%)". Normal approx; per-player sd ≈ max(2.5, 0.5×proj remaining).
+function lateCalc(c){function rl(l){return l.state!=='post'&&l.rem>0.05}var a=c.me.lines.filter(rl),b=c.op.lines.filter(rl),n=a.length+b.length;if(!n||c.me.lines.length-c.me.ytp+c.op.lines.length-c.op.ytp===0)return null;
+  var d=new Date(),wd=d.getDay(),h=d.getHours(),late=n<=4||wd===1||wd===2||(wd===0&&h>=19)||(wd===4&&h>=20);if(!late)return null;
+  var ra=0,rb=0,v=0;a.forEach(function(l){ra+=l.rem;v+=Math.pow(Math.max(2.5,0.5*l.rem),2)});b.forEach(function(l){rb+=l.rem;v+=Math.pow(Math.max(2.5,0.5*l.rem),2)});
+  var gap=c.op.actSum-c.me.actSum;if(Math.abs(ra-rb-gap)>30)return null;var p=Phi((ra-rb-gap)/Math.sqrt(v||1));
+  function nm(x){return x.length<=3?x.map(function(l){return l.pi.n.split(' ').slice(-1)[0]}).join(' + '):x.length+' players'}
+  if(a.length&&(gap>0||!b.length&&gap>-0.05))return {t:'You need '+f1(Math.max(0,gap+rb))+' from '+nm(a)+' to win',p:p,good:false};
+  if(b.length)return {t:(ownerOf(c.L,c.L.opp).name)+' needs '+f1(Math.max(0,-gap+ra))+' from '+nm(b),p:p,good:true};return null}
+function lateMath(c){var x=lateCalc(c);return x?'<div class="small late" style="margin-top:4px;color:'+(x.p>=0.5?'var(--for)':'var(--ag)')+'">🧮 '+esc(x.t)+' <b>(you ≈'+Math.round(x.p*100)+'%)</b></div>':''}
 var SHORT={thu:'TNF',fri:'Friday',sat:'Saturday',sunam:'London',sun:'Sunday',early:'Early',late:'Late',snf:'SNF',mon:'MNF',oth:'Other'};
 var SUNS={sunam:1,sun:1,early:1,late:1,snf:1};
 function bankLabel(me,op){var order=SLOTS.map(function(s){return s[0]}),done={},pre={};me.lines.concat(op.lines).forEach(function(l){if(l.state==='post')done[l.slot]=1;else if(l.state==='pre')pre[l.slot]=1});
@@ -353,7 +368,7 @@ function scoreCard(c,prev){var L=c.L,me=c.me,op=c.op,mo=ownerOf(L,L.me),oo=owner
   var mp=started?me.actSum:me.proj,opp=started?op.actSum:op.proj,ch=prev&&(Math.abs(prev[0]-mp)>0.01||Math.abs(prev[1]-opp)>0.01);
   function tm(o,s,pts,lead){return '<div class="tm'+(lead?' lead':'')+'">'+(o.av?'<img class="av" loading="lazy" alt="" src="'+o.av+'">':'<span class="av"></span>')+'<div class="nm">'+esc(o.name)+'<small>'+s.ytp+' yet to play'+(s.live?' · '+s.live+' live':'')+'</small></div><div class="pts"><b>'+f1(pts)+'</b><small>'+(started?'proj '+f1(s.fin):'projected')+'</small></div></div>'}
   function lu(s){return s.lines.map(function(l){return '<div class="p '+l.state+'"><span><span class="slot">'+esc(l.pi.pos)+'</span><span class="'+(l.state==='post'?'gdone':'')+'">'+esc(l.pi.n)+gmk(l.state)+'</span></span><b>'+(l.state==='pre'?f1(l.proj):f1(l.act))+'</b></div>'}).join('')}
-  return '<details class="sc'+(ch?' flash':'')+'" data-k="c'+L.id+'"'+(UI.openCards[L.id]?' open':'')+'><summary><div class="ln"><span>'+esc(L.name)+'</span><span>'+(anyLive?'<span class="live">● LIVE</span>':started?(me.rem+op.rem<0.05?'FINAL':bankLabel(me,op)):'WK '+D.week)+'</span></div>'+tm(mo,me,mp,me.fin>=op.fin)+tm(oo,op,opp,op.fin>me.fin)+'<div class="wp"><b style="color:'+(me.odds>=0.5?'var(--for)':'var(--ag)')+'">'+pct(me.odds)+'</b><div class="bar"><i style="width:'+Math.round(me.odds*100)+'%"></i></div><span class="muted">win odds</span></div>'+(typeof ROASTS!=='undefined'?'<div class="roast">'+ROASTS.card(c,started)+'</div>':'')+'</summary><div class="lu"><div><h4>You</h4>'+lu(me)+'</div><div><h4>'+esc(oo.name)+'</h4>'+lu(op)+'</div></div></details>'}
+  return '<details class="sc'+(ch?' flash':'')+'" data-k="c'+L.id+'"'+(UI.openCards[L.id]?' open':'')+'><summary><div class="ln"><span>'+esc(L.name)+'</span><span>'+(anyLive?'<span class="live">● LIVE</span>':started?(me.rem+op.rem<0.05?'FINAL':bankLabel(me,op)):'WK '+D.week)+'</span></div>'+tm(mo,me,mp,me.fin>=op.fin)+tm(oo,op,opp,op.fin>me.fin)+'<div class="wp"><b style="color:'+(me.odds>=0.5?'var(--for)':'var(--ag)')+'">'+pct(me.odds)+'</b><div class="bar"><i style="width:'+Math.round(me.odds*100)+'%"></i></div><span class="muted">win odds</span></div>'+lateMath(c)+(typeof ROASTS!=='undefined'?'<div class="roast">'+ROASTS.card(c,started)+'</div>':'')+'</summary><div class="lu"><div><h4>You</h4>'+lu(me)+'</div><div><h4>'+esc(oo.name)+'</h4>'+lu(op)+'</div></div></details>'}
 var PREV={};
 function renderSunday(el){
   if(!D.leagues.length){el.innerHTML='<section class="panel"><h2>Sunday</h2><div class="empty">No active leagues with matchups found for week '+D.week+'.</div>'+skippedHTML()+'</section>';return}

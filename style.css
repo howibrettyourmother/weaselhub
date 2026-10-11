@@ -123,3 +123,4 @@ td.w{white-space:normal}
 @media (prefers-reduced-motion:reduce){.gl,.lve.new{animation:none}}
 .lvs,.lvg,.lvl,.lvfin{max-width:100%;min-width:0}#view{overflow-x:clip}
 .ltot{color:var(--ink);font-weight:600}.vr{font-size:10px;color:var(--gold);border:1px solid rgba(255,199,44,.4);border-radius:4px;padding:0 3px;margin-left:3px;cursor:pointer;font-weight:400}.vr.on{border:0;padding:0;color:var(--mute)}
+.rc{margin:6px 0;padding:8px 10px;background:rgba(255,255,255,.035);border-radius:10px}.rch{display:flex;align-items:center;gap:10px;margin-bottom:4px}.rcg{font-size:13px;margin:2px 0}.rcg b{display:inline-block;min-width:16px}
