@@ -41,7 +41,7 @@ function playersCached(){var c=LS.get(PKEY);return c&&c.p?c:null}
 var _pl=null;
 function loadPlayers(force){
   var c=playersCached();
-  if(c&&!force&&Date.now()-c.at<864e5)return Promise.resolve(c.p);
+  if(c&&!force&&Date.now()-c.at<(statusEvery()<=5*6e4?3*36e5:864e5))return Promise.resolve(c.p);
   if(_pl)return _pl;
   _pl=J(SAPI+'/v1/players/nfl').then(function(all){var m={},want={QB:1,RB:1,WR:1,TE:1,K:1,DEF:1};
     for(var id in all){var p=all[id];var fp=(p.fantasy_positions&&p.fantasy_positions.length?p.fantasy_positions:[p.position]).filter(Boolean);
@@ -57,8 +57,9 @@ function slimInj(p){var o={};for(var k in p)if(D.rostered[k])o[k]={i:p[k].i,pr:p
 function pinfo(id){
   var pr=D.proj[id],pl=pr&&pr.pl,db=D.players&&D.players[id];
   if(isNaN(+id)){return {id:id,n:id+' D/ST',pos:'DEF',fp:['DEF'],team:id,inj:null}}
-  if(pl)return {id:id,n:((pl.first_name||'')+' '+(pl.last_name||'')).trim(),pos:pl.position,fp:pl.fantasy_positions||[pl.position],team:pr.team||pl.team||(db&&db.t),inj:pl.injury_status||(db&&db.i)||null,body:pl.injury_body_part||(db&&db.b)};
-  if(db)return {id:id,n:db.n,pos:db.p[0],fp:db.p,team:db.t,inj:db.i,body:db.b};
+  var ST=D.stat&&D.stat[id];
+  if(pl)return {id:id,n:((pl.first_name||'')+' '+(pl.last_name||'')).trim(),pos:pl.position,fp:pl.fantasy_positions||[pl.position],team:pr.team||pl.team||(db&&db.t),inj:ST?ST.s:(pl.injury_status||null),body:ST?ST.b:pl.injury_body_part,stsrc:ST&&ST.src};
+  if(db)return {id:id,n:db.n,pos:db.p[0],fp:db.p,team:db.t,inj:ST?ST.s:db.i,body:ST?ST.b:db.b,stsrc:ST&&ST.src};
   return {id:id,n:'Player '+id,pos:'?',fp:[],team:null,inj:null,unknown:true}}
 function head(id,cls){var pi=pinfo(id);
   if(pi.pos==='DEF')return '<img class="hs def '+(cls||'')+'" loading="lazy" alt="" src="https://sleepercdn.com/images/team_logos/nfl/'+String(id).toLowerCase()+'.png">';
@@ -97,7 +98,7 @@ function gameOf(team){return team?D.games[team]:null}
 // ---------------- projections (Sleeper unofficial; CORS *) ----------------
 function loadProj(){
   var u=SAPI+'/projections/nfl/'+D.season+'/'+D.week+'?season_type=regular&position[]=QB&position[]=RB&position[]=WR&position[]=TE&position[]=K&position[]=DEF';
-  return SC(u,15*6e4).then(function(arr){var m={};arr.forEach(function(x){m[x.player_id]={s:x.stats||{},pl:x.player||{},team:x.team}});D.proj=m})
+  return (D.proj&&Object.keys(D.proj).length?J(u+'&_='+Date.now()):SC(u,5*6e4)).then(function(arr){try{sessionStorage.setItem('wh:sc:'+u,JSON.stringify({at:Date.now(),d:arr}))}catch(e){}D.statAt=D.statAt||{};D.statAt.sleeper=Date.now();var m={};arr.forEach(function(x){m[x.player_id]={s:x.stats||{},pl:x.player||{},team:x.team}});D.proj=m})
     .catch(function(e){D.errors.push('Projections unavailable ('+e.message+').');D.proj={}})}
 function scoreStats(s,ss){var t=0;for(var k in ss){var w=ss[k];if(!w)continue;var v=s[k];
     if(v==null){if(k==='fgmiss'){v=(s.fgmiss_0_19||0)+(s.fgmiss_20_29||0)+(s.fgmiss_30_39||0)+(s.fgmiss_40_49||0)+(s.fgmiss_50p||0)}else continue}
@@ -225,6 +226,32 @@ function computeAll(){
 function label(x){x=Math.abs(x);return x>=0.30?'Huge':x>=0.15?'Big':x>=0.06?'Moderate':'Small'}
 
 // ---------------- start/sit check ----------------
+// ---------------- Status freshness: Sleeper (projections feed, cache-busted) + ESPN game-day inactives ----------------
+D.stat={};D.statAt={};
+function relevantIds(){var o={};(D.allLeagues||D.leagues).forEach(function(L){var r=L.rosters[L.me];(r&&r.players||[]).forEach(function(p){o[p]=1});L.mu.forEach(function(m){(m.starters||[]).forEach(function(p){o[p]=1})})});return o}
+function normN(n){return String(n||'').toLowerCase().replace(/[^a-z]/g,'').replace(/(jr|sr|ii|iii|iv)$/,'')}
+function espnInactives(){var now=Date.now(),ids=relevantIds(),byTeam={};Object.keys(ids).forEach(function(id){if(isNaN(+id))return;var pi=pinfo(id);if(pi.team)(byTeam[pi.team]=byTeam[pi.team]||[]).push(id)});
+  var games={};Object.keys(D.games||{}).forEach(function(t){var g=D.games[t];if(!byTeam[t]||!g||!g.id||g.state==='post')return;if(g.state==='pre'&&g.kick-now>150*6e4)return;games[g.id]=g});
+  var gl=Object.keys(games).map(function(k){return games[k]}),NS={};if(!gl.length){D.stat={};return Promise.resolve(0)}
+  return Promise.all(gl.map(function(g){return J('https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event='+g.id+'&_='+now).then(function(sm){
+      (sm.injuries||[]).forEach(function(T){var ab=ESPN_FIX[T.team&&T.team.abbreviation]||(T.team&&T.team.abbreviation),list=T.injuries||[],mine=byTeam[ab]||[];if(!mine.length)return;
+        var official=list.some(function(i){return i.date&&new Date(i.date).getTime()>=+g.kick-4*36e5});
+        var byE={},byN={};list.forEach(function(i){var a=i.athlete||{};if(a.id)byE[a.id]=i;byN[normN(a.displayName)]=i});
+        mine.forEach(function(id){var db=D.players&&D.players[id],pi=pinfo(id),hit=(db&&db.e&&byE[db.e])||byN[normN(pi.n)];
+          var at=hit&&hit.date?new Date(hit.date).getTime():now;
+          var pr=D.proj[id],sAt=+(pr&&pr.pl&&pr.pl.news_updated)||0;
+          if(hit){var st=hit.status,isOff=official&&at>=+g.kick-4*36e5;if(isOff||at>sAt)NS[id]={s:/^out$/i.test(st)?'Out':st==='Active'?null:st,src:isOff?'ESPN inactives':'ESPN injuries',at:at}}
+          else if(official)NS[id]={s:null,src:'ESPN inactives (active)',at:now}})});
+      D.statAt.espn=now;return 1}).catch(function(){return 0})})).then(function(r){D.stat=NS;D.statAt.espnN=r.reduce(function(a,b){return a+b},0);return D.statAt.espnN})}
+var _stBusy=null;
+function refreshStatus(manual){if(_stBusy)return _stBusy;
+  _stBusy=loadProj().then(function(){return espnInactives()}).then(function(){_stBusy=null;D.M=null;D.at=D.at||Date.now();if(D.leagues.length)rerender()},function(e){_stBusy=null;console.warn('status',e)});return _stBusy}
+function nextKick(){var n=null;Object.keys(D.games||{}).forEach(function(k){var g=D.games[k];if(g.state==='pre'&&(!n||g.kick<n))n=+g.kick});return n}
+function statusEvery(){var nk=nextKick(),now=Date.now();if(nk&&nk-now<=90*6e4)return 6e4;var d=new Date().getDay();return (d===0||d===1||d===4||isWindow())?5*6e4:30*6e4}
+var _stT=null;function statusLoop(){clearTimeout(_stT);_stT=setTimeout(function(){if(!document.hidden&&Date.now()-(D.statAt.sleeper||0)>=statusEvery()-2000)refreshStatus().then(statusLoop,statusLoop);else statusLoop()},15000)}
+document.addEventListener('visibilitychange',function(){if(!document.hidden&&D.leagues&&D.leagues.length&&Date.now()-(D.statAt.sleeper||0)>6e4)refreshStatus()});
+function stampHTML(){var a=D.statAt||{},t=a.sleeper;if(!t)return '';var nk=nextKick(),old=Date.now()-t>10*6e4&&nk&&nk-Date.now()<90*6e4;
+  return '<div class="small" style="margin-top:4px;color:'+(old?'var(--warn,#ffb020)':'var(--mute)')+'">'+(old?'⚠️ ':'')+'Statuses updated '+ETTIME.format(new Date(t))+' ET · Sleeper'+(a.espnN?' + ESPN game-day inactives ('+a.espnN+' game'+(a.espnN>1?'s':'')+')':'')+' · <button class="chip" data-strefresh style="height:24px;font-size:11px;padding:0 8px">↻ Refresh statuses</button></div>'}
 // ---------------- Start/Sit Calls: optimal lineup over unlocked players ----------------
 function hungarian(a){// min-cost assignment, rows<=cols; returns col index per row
   var n=a.length,m=a[0].length,INF=1e18,u=new Array(n+1).fill(0),v=new Array(m+1).fill(0),p=new Array(m+1).fill(0),way=new Array(m+1).fill(0);
@@ -313,7 +340,7 @@ function renderSunday(el){
   // lock banner
   var next=Object.keys(D.games).map(function(k){return D.games[k]}).filter(function(g){return g.state==='pre'}).sort(function(a,b){return a.kick-b.kick})[0];
   var hi=M.flags.filter(function(f){return f.sev==='hi'});
-  var banner='';if(next){var mins=Math.round((next.kick-now)/6e4),hh=Math.floor(mins/60),mm=mins%60;banner='<div class="box" style="margin-bottom:12px;border-color:'+(hi.length?'rgba(255,107,107,.5)':'rgba(255,199,44,.35)')+'"><b style="font-family:var(--disp);letter-spacing:.06em;color:var(--gold)">⏱ NEXT LOCK '+(mins>0?'IN '+(hh?hh+'h ':'')+mm+'m':'NOW')+'</b> <span class="muted">· '+esc(next.name)+' · '+ETTIME.format(next.kick)+' ET</span>'+(hi.length?'<div style="margin-top:4px;color:var(--ag);font-weight:700">'+hi.length+' lineup issue'+(hi.length>1?'s':'')+' to fix: '+hi.map(function(f){return f.t+' ('+esc(f.L.name)+')'}).join('; ')+'</div>':'<div class="small muted" style="margin-top:3px">No empty, Out, IR or bye starters 👍</div>')+'</div>'}
+  var banner='';if(next){var mins=Math.round((next.kick-now)/6e4),hh=Math.floor(mins/60),mm=mins%60;banner='<div class="box" style="margin-bottom:12px;border-color:'+(hi.length?'rgba(255,107,107,.5)':'rgba(255,199,44,.35)')+'"><b style="font-family:var(--disp);letter-spacing:.06em;color:var(--gold)">⏱ NEXT LOCK '+(mins>0?'IN '+(hh?hh+'h ':'')+mm+'m':'NOW')+'</b> <span class="muted">· '+esc(next.name)+' · '+ETTIME.format(next.kick)+' ET</span>'+(hi.length?'<div style="margin-top:4px;color:var(--ag);font-weight:700">'+hi.length+' lineup issue'+(hi.length>1?'s':'')+' to fix: '+hi.map(function(f){return f.t+' ('+esc(f.L.name)+')'}).join('; ')+'</div>':'<div class="small muted" style="margin-top:3px">No empty, Out, IR or bye starters 👍</div>')+stampHTML()+'</div>'}
   // cards sorted by closeness (finished last)
   var cards=M.cards.slice().sort(function(a,b){var fa=a.me.rem+a.op.rem<0.05,fb=b.me.rem+b.op.rem<0.05;if(fa!==fb)return fa?1:-1;return Math.abs(a.me.odds-0.5)-Math.abs(b.me.odds-0.5)});
   var cardsH=cards.map(function(c){var h=scoreCard(c,PREV[c.L.id]);PREV[c.L.id]=[c.me.lines.some(function(l){return l.state!=='pre'})||c.op.lines.some(function(l){return l.state!=='pre'})?c.me.actSum:c.me.proj,c.me.lines.some(function(l){return l.state!=='pre'})||c.op.lines.some(function(l){return l.state!=='pre'})?c.op.actSum:c.op.proj];return h}).join('');
@@ -336,7 +363,7 @@ function renderSunday(el){
      '<div class="small muted">'+callsSummary(cs)+(cs.calls.length?' · open slots proj '+f1(cs.cur)+' → '+f1(cs.opt):'')+'</div>'+
      cs.calls.map(function(c){return '<div class="flag"><div class="ic">'+head(c.x.id)+'</div><div class="fx"><div class="ft">Start '+esc(c.x.pi.n)+(c.y?' over '+esc(c.y.pi.n):'')+' <span class="muted small">('+esc(c.slot)+')</span> <span class="pill '+CC[c.lvl]+'">'+c.conf.toUpperCase()+'</span></div><div class="small"><b style="color:var(--for)">'+f1(c.x.proj)+'</b>'+(c.y?' vs <b style="color:var(--ag)">'+f1(c.y.proj)+'</b>':'')+' proj · <b>+'+f1(c.gain)+'</b>'+(c.kick<9e15?' · locks '+ETTIME.format(new Date(c.kick))+' ET':'')+'</div><div class="small muted">'+c.why.join(' · ')+'</div>'+(c.roast?'<div class="small" style="color:var(--gold);font-style:italic">🦦 '+esc(c.roast)+'</div>':'')+'</div></div>'}).join('')+
      fl.map(function(f){return '<div class="flag sev-'+f.sev+'"><div class="ic">'+f.ic+'</div><div class="fx"><div class="ft">'+f.t+'</div><div class="small muted">'+f.d+'</div></div></div>'}).join('')+'</div>'}).join('');
-  var callsSec='<section class="panel"><h2>🧠 Start/Sit Calls <small>WEEK '+D.week+'</small></h2>'+callsH+'<div class="hint">Optimal lineup from Sleeper projections under each league\'s slots &amp; scoring (FLEX/SUPER_FLEX included). Players whose games have kicked off are locked in place. Out/IR/bye count as 0, Doubtful at 25%. Strong = +5 or more and 25%+ better (or replacing an Out/bye starter); Lean = +2 or more; Questionable on the incoming player drops it a level.</div></section>';
+  var callsSec='<section class="panel"><h2>🧠 Start/Sit Calls <small>WEEK '+D.week+'</small></h2>'+callsH+stampHTML()+'<div class="hint">Optimal lineup from Sleeper projections under each league\'s slots &amp; scoring (FLEX/SUPER_FLEX included). Players whose games have kicked off are locked in place. Out/IR/bye count as 0, Doubtful at 25%. Strong = +5 or more and 25%+ better (or replacing an Out/bye starter); Lean = +2 or more; Questionable on the incoming player drops it a level.</div></section>';
   var pk=M.picks.filter(function(x){return x.p.round<=2&&+x.p.season===+x.L.raw.season+1}).sort(function(a,b){return b.p.w-a.p.w});
   var pkH=pk.length?'<section class="panel"><h2>🎯 Pick Watch <small><a href="#picks">ALL PICKS →</a></small></h2><div class="hint">Rookie order = lowest <b>max PF</b> (potential points) first among non-playoff teams. You want these teams to score low <b>potential points</b> (bench included); W/L only matters near the playoff line. Shown here for reference; it doesn\'t feed the Rooting Guide.</div>'+pk.slice(0,4).map(pickRow).join('')+(pk.length>4?'<a class="small" href="#picks">+'+(pk.length-4)+' more on Picks →</a>':'')+pickRootHTML(pk,true)+'</section>':'';
   el.innerHTML=banner+callsSec+'<section class="panel"><h2>📺 Scoreboard <small>'+cards.length+' LEAGUES · EXP. WINS '+f1(rec.x)+'</small></h2><div class="sbs">'+cardsH+'</div><div class="hint" style="margin-top:6px">Tap a card for both lineups. Sorted by closest game. '+(isWindow()?'Auto-refreshing every 60s.':'Auto-refresh kicks in during game windows.')+'</div></section>'+
@@ -345,6 +372,7 @@ function renderSunday(el){
    '<section class="panel"><h2>⚔️ Conflicts</h2>'+confH+'</section>'+
    pkH+skippedHTML();
   $$('#chips .chip',el).forEach(function(b){b.onclick=function(){UI.slot=b.getAttribute('data-s');renderSunday(el)}});
+  $$('[data-strefresh]',el).forEach(function(b){b.onclick=function(){b.disabled=true;b.textContent='Refreshing…';refreshStatus(true)}});
   $$('#pchips [data-p]',el).forEach(function(b){b.onclick=function(){UI.pos=b.getAttribute('data-p');renderSunday(el)}});
   $$('#pchips [data-sd]',el).forEach(function(b){b.onclick=function(){UI.side=b.getAttribute('data-sd');renderSunday(el)}});
   $$('[data-more]',el).forEach(function(b){b.onclick=function(){UI.all[b.getAttribute('data-more')]=1;renderSunday(el)}});
@@ -417,12 +445,12 @@ function boot(){
     D.rostered={};D.anyRostered={};D.leagues.forEach(function(L){Object.keys(L.rosters).forEach(function(k){(L.rosters[k].players||[]).forEach(function(p){D.anyRostered[p]=1})})});D.leagues.forEach(function(L){Object.keys(L.rosters).forEach(function(k){var r=L.rosters[k];(r.players||[]).forEach(function(p){if(k==L.me)D.rostered[p]=1})});L.mu.forEach(function(m){(m.starters||[]).forEach(function(p){D.rostered[p]=1})})});
     var c=playersCached();if(c)D.players=c.p;
     D.allLeagues=D.leagues;applyLg();lgChips();
-    D.at=Date.now();rerender();schedule();
+    D.at=Date.now();rerender();schedule();refreshStatus();statusLoop();
     // background: fill names/injuries for players without projection rows, refresh daily
     var missing=Object.keys(D.rostered).some(function(id){return !D.proj[id]&&isNaN(+id)===false&&!(D.players&&D.players[id])});
-    if(missing||!c||Date.now()-c.at>864e5)setTimeout(function(){loadPlayers().then(function(p){D.players=p;rerender()}).catch(function(e){console.warn('players',e)})},800);
+    if(missing||!c||Date.now()-c.at>(statusEvery()<=5*6e4?3*36e5:864e5))setTimeout(function(){loadPlayers().then(function(p){D.players=p;rerender()}).catch(function(e){console.warn('players',e)})},800);
     if(window.afterBoot)window.afterBoot.forEach(function(f){try{f()}catch(e){console.error(e)}});
   }).catch(function(e){console.error(e);$('#view').innerHTML='<div class="panel err">Could not load: '+esc(e.message)+'. <a href="javascript:location.reload()">Retry</a></div>'})}
 $('#refresh').onclick=function(){var b=this;b.disabled=true;try{sessionStorage.clear()}catch(e){}
-  Promise.all([loadProj(),liveRefresh()]).then(function(){b.disabled=false},function(){b.disabled=false})};
+  Promise.all([liveRefresh().then(function(){return refreshStatus(true)})]).then(function(){b.disabled=false},function(){b.disabled=false})};
 boot();

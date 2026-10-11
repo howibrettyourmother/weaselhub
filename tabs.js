@@ -205,7 +205,7 @@ function injuryItems(){var mine=myIds(),snap=LS.get('wh:injsnap'),chg=LS.get('wh
   Object.keys(cur).forEach(function(id){var c=cur[id];if(!c.i)return;if(items.some(function(x){return x.id===id&&x.kind==='inj'}))return;var pr=D.proj[id],t=pr&&pr.pl&&pr.pl.news_updated||null;items.push({kind:'inj',id:id,at:t||0,t:c.i+(c.b?' ('+c.b+')':''),bad:true,m:mine[id],cur:true})});
   return items}
 function espnIds(){var mine=myIds(),o={};Object.keys(mine).forEach(function(id){var e=(D.players&&D.players[id]&&D.players[id].e)||null;if(!e)D.leagues.some(function(L){return (e=L.V&&L.V.e[id])});if(e)o[id]=String(e)});return o}
-function espnNews(){var c=LS.get(NEWSK);if(c&&Date.now()-c.at<20*6e4)return Promise.resolve(c.items);
+function espnNews(){var c=LS.get(NEWSK);if(c&&Date.now()-c.at<(statusEvery()<=5*6e4?4*6e4:20*6e4))return Promise.resolve(c.items);
   var mine=myIds(),ids=espnIds(),list=Object.keys(ids).sort(function(a,b){return mine[b].start.length-mine[a].start.length||mine[b].lg.length-mine[a].lg.length}).slice(0,40);
   return pool(list.map(function(id){return function(){return J('https://site.api.espn.com/apis/fantasy/v2/games/ffl/news/players?limit=2&playerId='+ids[id]).then(function(d){return (d.feed||[]).map(function(x){return {kind:'espn',id:id,at:Date.parse(x.published)||0,t:x.headline,story:x.story,link:x.links&&x.links.mobile&&x.links.mobile.href}})})}}),4).then(function(arr){
     var items=[].concat.apply([],arr.filter(Boolean)).filter(function(x){return Date.now()-x.at<10*864e5});LS.set(NEWSK,{at:Date.now(),items:items});D.newsOk=true;return items}).catch(function(e){D.errors.push('ESPN news unavailable: '+e.message);return []})}
