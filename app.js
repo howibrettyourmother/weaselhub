@@ -245,7 +245,7 @@ function espnInactives(){var now=Date.now(),ids=relevantIds(),byTeam={};Object.k
       D.statAt.espn=now;return 1}).catch(function(){return 0})})).then(function(r){D.stat=NS;D.statAt.espnN=r.reduce(function(a,b){return a+b},0);return D.statAt.espnN})}
 var _stBusy=null;
 function refreshStatus(manual){if(_stBusy)return _stBusy;
-  _stBusy=loadProj().then(function(){return espnInactives()}).then(function(){_stBusy=null;D.M=null;D.at=D.at||Date.now();if(D.leagues.length)rerender()},function(e){_stBusy=null;console.warn('status',e)});return _stBusy}
+  _stBusy=loadProj().then(function(){return espnInactives()}).then(function(){_stBusy=null;D.M=null;D.at=D.at||Date.now();if(D.leagues.length)rerender();if(window.NEWS&&NEWS.reload&&NEWS.items)NEWS.reload(!!manual)},function(e){_stBusy=null;console.warn('status',e)});return _stBusy}
 function nextKick(){var n=null;Object.keys(D.games||{}).forEach(function(k){var g=D.games[k];if(g.state==='pre'&&(!n||g.kick<n))n=+g.kick});return n}
 function statusEvery(){var nk=nextKick(),now=Date.now();if(nk&&nk-now<=90*6e4)return 6e4;var d=new Date().getDay();return (d===0||d===1||d===4||isWindow())?5*6e4:30*6e4}
 var _stT=null;function statusLoop(){clearTimeout(_stT);_stT=setTimeout(function(){if(!document.hidden&&Date.now()-(D.statAt.sleeper||0)>=statusEvery()-2000)refreshStatus().then(statusLoop,statusLoop);else statusLoop()},15000)}
