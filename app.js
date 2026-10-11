@@ -161,7 +161,7 @@ var PICK_K=0.35;// a 1st from the worst team losing ~= 35% of the value of your 
 function computeAll(){
   var players={},cards=[],flags=[],picks=[];
   D.leagues.forEach(function(L){
-    var sides={};L.mu.forEach(function(m){if(m.matchup_id!=null)sides[m.roster_id]=teamSide(L,m)});
+    var sides={};L.mu.forEach(function(m){if(m.matchup_id!=null)sides[m.roster_id]=teamSide(L,m)});L.sides=sides;
     var pw=pickWatch(L);L.picks=pw;
     // stake: value to Brett of roster X winning its matchup
     var stake={},why={};stake[L.me]=1;why[L.me]=['me'];
@@ -219,11 +219,18 @@ function rowHTML(P,side,max){var l=P.line,pi=l.pi,v=P.key,w=Math.max(4,Math.roun
   var live=l.state!=='pre'&&l.g?' · <b>'+f1(P.ent[0].act)+'</b> pts':'';
   return '<details class="row '+(P.done?'done':'')+'" data-k="r'+P.id+'"'+(UI.open['r'+P.id]?' open':'')+'><summary>'+head(P.id)+'<div class="mid"><div class="pn">'+esc(pi.n)+' '+(pi.inj?'<span class="inj">'+esc(pi.inj.toUpperCase().slice(0,4))+'</span>':'')+'</div><div class="meta">'+posChip(pi.pos)+'<span>'+esc(pi.team||'FA')+' '+esc(oppStr(l))+'</span>'+gameTag(l)+'<span class="lgs">'+P.nL+' league'+(P.nL>1?'s':'')+'</span>'+tags+'</div></div><div class="imp"><div class="lbl">'+(P.done?'Done':label(v))+'</div><div class="ibar"><i style="width:'+w+'%"></i></div><div class="pp">'+f1(l.proj)+' proj'+live+'</div></div></summary><div class="det">'+
     ents.map(function(e){var sg=(P.done?e.base:e.imp);return '<div><span><b>'+esc(e.L.name)+'</b> · '+esc(e.tag)+'</span><span class="'+(sg>=0?'pe':'ne')+'">'+(sg>=0?'+':'−')+f1(Math.abs(sg)*100)+'% swing</span></div>'}).join('')+'</div></details>'}
+var SHORT={thu:'TNF',fri:'Friday',sat:'Saturday',sunam:'London',sun:'Sunday',early:'Early',late:'Late',snf:'SNF',mon:'MNF',oth:'Other'};
+var SUNS={sunam:1,sun:1,early:1,late:1,snf:1};
+function bankLabel(me,op){var order=SLOTS.map(function(s){return s[0]}),done={},pre={};me.lines.concat(op.lines).forEach(function(l){if(l.state==='post')done[l.slot]=1;else if(l.state==='pre')pre[l.slot]=1});
+  var d=order.filter(function(k){return done[k]}),p=order.filter(function(k){return pre[k]});if(!p.length)return 'FINAL';
+  var next=p[0],allBeforeSun=d.every(function(k){return !SUNS[k]&&k!=='mon'});
+  var ahead=SUNS[next]&&allBeforeSun?'Sunday':SHORT[next]||next;
+  return (d.length?d.map(function(k){return SHORT[k]||k}).join('+')+' banked · ':'')+ahead+' ahead'}
 function scoreCard(c,prev){var L=c.L,me=c.me,op=c.op,mo=ownerOf(L,L.me),oo=ownerOf(L,L.opp),started=me.ytp<me.lines.length||op.ytp<op.lines.length,anyLive=me.live+op.live>0;
   var mp=started?me.actSum:me.proj,opp=started?op.actSum:op.proj,ch=prev&&(Math.abs(prev[0]-mp)>0.01||Math.abs(prev[1]-opp)>0.01);
   function tm(o,s,pts,lead){return '<div class="tm'+(lead?' lead':'')+'">'+(o.av?'<img class="av" loading="lazy" alt="" src="'+o.av+'">':'<span class="av"></span>')+'<div class="nm">'+esc(o.name)+'<small>'+s.ytp+' yet to play'+(s.live?' · '+s.live+' live':'')+'</small></div><div class="pts"><b>'+f1(pts)+'</b><small>'+(started?'proj '+f1(s.fin):'projected')+'</small></div></div>'}
   function lu(s){return s.lines.map(function(l){return '<div class="p '+l.state+'"><span><span class="slot">'+esc(l.pi.pos)+'</span>'+esc(l.pi.n)+'</span><b>'+(l.state==='pre'?f1(l.proj):f1(l.act))+'</b></div>'}).join('')}
-  return '<details class="sc'+(ch?' flash':'')+'" data-k="c'+L.id+'"'+(UI.openCards[L.id]?' open':'')+'><summary><div class="ln"><span>'+esc(L.name)+'</span><span>'+(anyLive?'<span class="live">● LIVE</span>':started?(me.rem+op.rem<0.05?'FINAL':'UNDERWAY'):'WK '+D.week)+'</span></div>'+tm(mo,me,mp,me.fin>=op.fin)+tm(oo,op,opp,op.fin>me.fin)+'<div class="wp"><b style="color:'+(me.odds>=0.5?'var(--for)':'var(--ag)')+'">'+pct(me.odds)+'</b><div class="bar"><i style="width:'+Math.round(me.odds*100)+'%"></i></div><span class="muted">win odds</span></div></summary><div class="lu"><div><h4>You</h4>'+lu(me)+'</div><div><h4>'+esc(oo.name)+'</h4>'+lu(op)+'</div></div></details>'}
+  return '<details class="sc'+(ch?' flash':'')+'" data-k="c'+L.id+'"'+(UI.openCards[L.id]?' open':'')+'><summary><div class="ln"><span>'+esc(L.name)+'</span><span>'+(anyLive?'<span class="live">● LIVE</span>':started?(me.rem+op.rem<0.05?'FINAL':bankLabel(me,op)):'WK '+D.week)+'</span></div>'+tm(mo,me,mp,me.fin>=op.fin)+tm(oo,op,opp,op.fin>me.fin)+'<div class="wp"><b style="color:'+(me.odds>=0.5?'var(--for)':'var(--ag)')+'">'+pct(me.odds)+'</b><div class="bar"><i style="width:'+Math.round(me.odds*100)+'%"></i></div><span class="muted">win odds</span></div>'+(typeof ROASTS!=='undefined'?'<div class="roast">'+ROASTS.card(c,started)+'</div>':'')+'</summary><div class="lu"><div><h4>You</h4>'+lu(me)+'</div><div><h4>'+esc(oo.name)+'</h4>'+lu(op)+'</div></div></details>'}
 var PREV={};
 function renderSunday(el){
   if(!D.leagues.length){el.innerHTML='<section class="panel"><h2>Sunday</h2><div class="empty">No active leagues with matchups found for week '+D.week+'.</div>'+skippedHTML()+'</section>';return}
@@ -248,12 +255,12 @@ function renderSunday(el){
   var flags=M.flags.slice().sort(function(a,b){var o={hi:0,md:1,lo:2};return o[a.sev]-o[b.sev]});
   var flagH=flags.length?flags.map(function(f){return '<div class="flag sev-'+f.sev+'"><div class="ic">'+f.ic+'</div><div class="fx"><div class="ft">'+f.t+'</div><div class="small muted">'+f.d+'</div></div><a class="small" href="'+f.link+'" target="_blank" rel="noopener">'+esc(f.L.name)+' ↗</a></div>'}).join(''):'<div class="empty">All lineups look clean ✅</div>';
   var pk=M.picks.filter(function(x){return x.p.round<=2&&+x.p.season===+x.L.raw.season+1}).sort(function(a,b){return b.p.w-a.p.w});
-  var pkH=pk.length?'<section class="panel"><h2>🎯 Pick Watch <small><a href="#picks">ALL PICKS →</a></small></h2><div class="hint">Teams whose picks you own. You want them to lose; their starters are folded into Root Against.</div>'+pk.map(pickRow).join('')+'</section>':'';
+  var pkH=pk.length?'<section class="panel"><h2>🎯 Pick Watch <small><a href="#picks">ALL PICKS →</a></small></h2><div class="hint">Teams whose picks you own. You want them to lose; their starters are folded into Root Against.</div>'+pk.slice(0,4).map(pickRow).join('')+(pk.length>4?'<a class="small" href="#picks">+'+(pk.length-4)+' more on Picks →</a>':'')+'</section>':'';
   el.innerHTML=banner+'<section class="panel"><h2>📺 Scoreboard <small>'+cards.length+' LEAGUES · EXP. WINS '+f1(rec.x)+'</small></h2><div class="sbs">'+cardsH+'</div><div class="hint" style="margin-top:6px">Tap a card for both lineups. Sorted by closest game. '+(isWindow()?'Auto-refreshing every 60s.':'Auto-refresh kicks in during game windows.')+'</div></section>'+
    newsStripHTML()+
    '<section class="panel"><h2>📣 Rooting Guide <small>WEEK '+D.week+'</small></h2>'+chips+'<div class="cols">'+lst(fr,'for','ROOT FOR')+lst(ag,'ag','ROOT AGAINST')+'</div><div class="hint">Impact = projected points still to come × how close the matchup is (win-probability swing), summed across leagues. Tap a player for per-league effects.</div></section>'+
    '<section class="panel"><h2>⚔️ Conflicts</h2>'+confH+'</section>'+
-   '<section class="panel"><h2>🩺 Start/Sit Check</h2>'+flagH+'</section>'+pkH+rivalHTML(M)+skippedHTML();
+   '<section class="panel"><h2>🩺 Start/Sit Check</h2>'+flagH+'</section>'+pkH+skippedHTML();
   $$('#chips .chip',el).forEach(function(b){b.onclick=function(){UI.slot=b.getAttribute('data-s');renderSunday(el)}});
   $$('[data-more]',el).forEach(function(b){b.onclick=function(){UI.all[b.getAttribute('data-more')]=1;renderSunday(el)}});
   $$('details',el).forEach(function(d){d.addEventListener('toggle',function(){var k=d.getAttribute('data-k')||'';if(k[0]==='c')UI.openCards[k.slice(1)]=d.open;else UI.open[k]=d.open})});
@@ -283,8 +290,11 @@ document.addEventListener('visibilitychange',function(){if(!document.hidden&&Dat
 // ---------------- router ----------------
 var TABS=[['sunday','🏈','SUNDAY',renderSunday]];
 var EXTRA_TABS=[];// later modules push [key,icon,label,renderFn]
-function navHTML(){return TABS.concat(EXTRA_TABS).map(function(t){return '<a href="#'+t[0]+'" data-k="'+t[0]+'"><span>'+t[1]+'</span>'+t[2]+'</a>'}).join('')}
-function curTab(){var h=(location.hash||'#sunday').slice(1).split('/')[0],all=TABS.concat(EXTRA_TABS);return all.filter(function(t){return t[0]===h})[0]||all[0]}
+function navHTML(){var all=TABS.concat(EXTRA_TABS),ord=typeof TAB_ORDER!=='undefined'?TAB_ORDER:null,by={};all.forEach(function(t){by[t[0]]=t});
+  if(!ord)return all.map(navA).join('');var out=[],seen={};ord.forEach(function(g,gi){if(gi)out.push('<i class="tsep"></i>');g.forEach(function(k){if(by[k]){out.push(navA(by[k]));seen[k]=1}})});all.forEach(function(t){if(!seen[t[0]])out.push(navA(t))});return out.join('')}
+function navA(t){return '<a href="#'+t[0]+'" data-k="'+t[0]+'"><span>'+t[1]+'</span>'+t[2]+'</a>'}
+function defaultTab(){var wd=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short'}).format(new Date());var live=false;for(var t in D.games)if(D.games[t].state==='in')live=true;return (live||wd==='Sun'||wd==='Mon'||wd==='Thu')?'sunday':'home'}
+function curTab(){var h=(location.hash||('#'+defaultTab())).slice(1).split('/')[0],all=TABS.concat(EXTRA_TABS);return all.filter(function(t){return t[0]===h})[0]||all[0]}
 function rerender(){var t=curTab(),el=$('#view');$$('#tabs a').forEach(function(a){a.className=a.getAttribute('data-k')===t[0]?'on':''});
   try{t[3](el)}catch(e){console.error(e);el.innerHTML='<div class="panel err">Something broke rendering this tab: '+esc(e.message)+'</div>'}}
 addEventListener('hashchange',function(){rerender();scrollTo(0,0)});
