@@ -24,7 +24,16 @@ var ESPN_FIX={WSH:'WAS',LA:'LAR',JAC:'JAX'};
 
 // ---------------- global state ----------------
 var D={user:null,season:null,week:null,leagues:[],skipped:[],proj:{},games:{},byes:{},players:null,errors:[],at:0};
-var UI={slot:'all',open:{},openCards:{},all:{}};
+var UI={slot:'all',pos:'all',side:'both',open:{},openCards:{},all:{}};
+// ---------------- league filter (multi-select; ?lg=id,id and localStorage) ----------------
+var LGK='wh:lg';function lgSel(){var q=QS.get('lg');if(q!=null)return q?q.split(',').filter(Boolean):[];return LS.get(LGK)||[]}
+function applyLg(){var all=D.allLeagues||D.leagues,sel=lgSel(),f=all.filter(function(L){return sel.indexOf(L.id)>=0});D.leagues=f.length?f:all;D.M=null}
+function setLg(arr){LS.set(LGK,arr);QS.set('lg',arr.join(','));var u=location.pathname+(arr.length?'?lg='+arr.join(','):'')+location.hash;try{history.replaceState(null,'',u)}catch(e){}
+  if(!arr.length)QS.delete('lg');applyLg();lgChips();rerender()}
+function lgChips(){var el=$('#lgf');if(!el||!D.allLeagues||D.allLeagues.length<2)return;var sel=D.leagues.length===D.allLeagues.length?[]:D.leagues.map(function(L){return L.id});
+  el.innerHTML='<button class="chip'+(sel.length?'':' on')+'" data-lg="">All</button>'+D.allLeagues.map(function(L){return '<button class="chip'+(sel.indexOf(L.id)>=0?' on':'')+'" data-lg="'+L.id+'">'+esc(L.name)+'</button>'}).join('');
+  $$('[data-lg]',el).forEach(function(b){b.onclick=function(){var id=b.getAttribute('data-lg');if(!id)return setLg([]);var i=sel.indexOf(id);if(i>=0)sel.splice(i,1);else sel.push(id);
+    if(sel.length===D.allLeagues.length)sel=[];setLg(sel.slice())}})}
 
 // ---------------- players DB (big; slimmed + cached daily in localStorage) ----------------
 var PKEY='wh:players:v1';
@@ -118,7 +127,7 @@ function loadLeagues(){
       var om=L.mu.filter(function(m){return m.matchup_id===mm.matchup_id&&m.roster_id!==L.me})[0];
       if(!om){D.skipped.push({name:L.name,why:'no opponent this week'});return null}
       L.opp=om.roster_id;return L})}))}).then(function(arr){D.leagues=arr.filter(Boolean)})}
-function refreshMatchups(){return Promise.all(D.leagues.map(function(L){return S('/v1/league/'+L.id+'/matchups/'+D.week).then(function(m){if(m&&m.length)L.mu=m}).catch(function(){})}))}
+function refreshMatchups(){return Promise.all((D.allLeagues||D.leagues).map(function(L){return S('/v1/league/'+L.id+'/matchups/'+D.week).then(function(m){if(m&&m.length)L.mu=m}).catch(function(){})}))}
 
 // ---------------- core model ----------------
 function playerLine(L,id,actualMap){
@@ -176,7 +185,8 @@ function rivals(L){var st=standings(L),me=st[L.me];if(!me)return [];var pt=(L.ra
   return Object.keys(st).map(function(k){return st[k]}).filter(function(x){return x.rid!==L.me&&Math.abs((x.w+x.t/2)-(me.w+me.t/2))<=1}).sort(function(a,b){return Math.abs(a.w-me.w)-Math.abs(b.w-me.w)||Math.abs(a.pf-me.pf)-Math.abs(b.pf-me.pf)}).slice(0,3).map(function(x){x.pt=pt;return x})}
 // ---------------- impact aggregation ----------------
 var PICK_K=0.35;// W/L part: a 1st-round team on the playoff bubble losing ~= 35% of your own win
-var MPF_K=0.35;// max-PF part: value (in your-win units) of moving that 1st one full slot
+var MPF_K=0.35;
+var H2H_ONLY=true;// Brett: Root For/Against = only his own matchups (his starters vs his opponents' starters)// max-PF part: value (in your-win units) of moving that 1st one full slot
 function computeAll(){
   var players={},cards=[],flags=[],picks=[];
   D.leagues.forEach(function(L){
@@ -184,8 +194,8 @@ function computeAll(){
     var pw=pickWatch(L);L.picks=pw;
     // stake: value to Brett of roster X winning its matchup
     var stake={},why={};stake[L.me]=1;why[L.me]=['me'];
-    pw.forEach(function(p){var b=p.near?(p.st&&p.st.bubble)||0:0;if(b>0.05){stake[p.rid]=(stake[p.rid]||0)-PICK_K*p.w*b;(why[p.rid]=why[p.rid]||[]).push('🎯 '+p.label+' (playoff bubble)')}});
-    L.rivals=rivals(L);L.rivals.forEach(function(x){if(x.rid===L.opp)return;stake[x.rid]=(stake[x.rid]||0)-RIVAL_K;(why[x.rid]=why[x.rid]||[]).push('👀 playoff-race rival')});
+    (H2H_ONLY?[]:pw).forEach(function(p){var b=p.near?(p.st&&p.st.bubble)||0:0;if(b>0.05){stake[p.rid]=(stake[p.rid]||0)-PICK_K*p.w*b;(why[p.rid]=why[p.rid]||[]).push('🎯 '+p.label+' (playoff bubble)')}});
+    L.rivals=rivals(L);(H2H_ONLY?[]:L.rivals).forEach(function(x){if(x.rid===L.opp)return;stake[x.rid]=(stake[x.rid]||0)-RIVAL_K;(why[x.rid]=why[x.rid]||[]).push('👀 playoff-race rival')});
     var pairs={};Object.keys(sides).forEach(function(k){var s=sides[k];(pairs[s.mid]=pairs[s.mid]||[]).push(s)});
     Object.keys(pairs).forEach(function(mid){var pr=pairs[mid];if(pr.length!==2)return;var A=pr[0],B=pr[1],od=pairOdds(A,B),o0=preOdds(A,B);
       A.odds=od.pA;B.odds=1-od.pA;A.vs=B;B.vs=A;
@@ -197,7 +207,7 @@ function computeAll(){
         var P=players[l.id]=players[l.id]||{id:l.id,line:l,ent:[],net:0,netBase:0};
         P.ent.push({L:L,imp:imp,base:base,who:who,tag:tag,proj:l.proj,act:l.act,state:l.state,winp:side.rid===L.me?side.odds:null});
         P.net+=imp;P.netBase+=base;if(l.state==='in')P.line=l})})});
-    var stt=standings(L);pw.forEach(function(p){var x=stt[p.rid];if(!x||!x.wk.lines||!p.spp)return;var k=MPF_K*p.w*x.pNon*p.spp;if(k<1e-6)return;
+    var stt=standings(L);(H2H_ONLY?[]:pw).forEach(function(p){var x=stt[p.rid];if(!x||!x.wk.lines||!p.spp)return;var k=MPF_K*p.w*x.pNon*p.spp;if(k<1e-6)return;
       Object.keys(x.wk.lines).forEach(function(id){var l=x.wk.lines[id],wOpt=x.wk.set[id]?1:0.35,imp=-k*wOpt*l.rem,base=-k*wOpt*l.proj;if(Math.abs(base)<1e-4)return;
         var P=players[id]=players[id]||{id:id,line:l,ent:[],net:0,netBase:0};
         P.ent.push({L:L,imp:imp,base:base,who:'pick',tag:'🎯 for the pick ('+L.name+', '+p.label+') · max PF'+(x.wk.set[id]?'':' (bench counts)'),proj:l.proj,act:l.act,state:l.state});P.net+=imp;P.netBase+=base})});
@@ -309,7 +319,9 @@ function renderSunday(el){
   // slot chips
   var cnt={all:0};M.players.forEach(function(P){if(Math.abs(P.key)<1e-4)return;cnt.all++;cnt[P.line.slot]=(cnt[P.line.slot]||0)+1});
   var chips='<div class="chips" id="chips">'+[['all','All']].concat(SLOTS).filter(function(s){return s[0]==='all'||cnt[s[0]]}).map(function(s){var st=s[0]==='all'?'':slotState(s[0]);return '<button class="chip'+(UI.slot===s[0]?' on':'')+'" data-s="'+s[0]+'">'+s[1]+'<span class="c"> '+(cnt[s[0]]||0)+'</span>'+(st==='live'?'<span class="st">● LIVE</span>':st==='fin'?'<span class="st fin">✓</span>':'')+'</button>'}).join('')+'</div>';
-  var inSlot=M.players.filter(function(P){return Math.abs(P.key)>=1e-4&&(UI.slot==='all'||P.line.slot===UI.slot)});
+  var POS=['all','QB','RB','WR','TE'],posOf=function(P){var pi=P.line.pi;return pi.pos||((pi.fp||[])[0])};
+  chips+='<div class="chips" id="pchips">'+POS.map(function(p){return '<button class="chip'+(UI.pos===p?' on':'')+'" data-p="'+p+'">'+(p==='all'?'All pos':p)+'</button>'}).join('')+'<span style="flex:0 0 8px"></span>'+[['both','For + Against'],['for','Root For'],['ag','Root Against']].map(function(x){return '<button class="chip'+(UI.side===x[0]?' on':'')+'" data-sd="'+x[0]+'">'+x[1]+'</button>'}).join('')+'</div>';
+  var inSlot=M.players.filter(function(P){return Math.abs(P.key)>=1e-4&&(UI.slot==='all'||P.line.slot===UI.slot)&&(UI.pos==='all'||posOf(P)===UI.pos)});
   var fr=inSlot.filter(function(P){return P.key>0}).sort(function(a,b){return (a.done-b.done)||b.key-a.key}),ag=inSlot.filter(function(P){return P.key<0}).sort(function(a,b){return (a.done-b.done)||a.key-b.key});
   var max=Math.max.apply(null,[0.01].concat(M.players.map(function(P){return Math.abs(P.key)})));
   function lst(arr,cls,title){var lim=UI.all[cls]?arr.length:15,more=arr.length-lim;return '<div class="list '+cls+'"><div class="lh '+cls+'">'+title+'<span>'+arr.length+' players</span></div>'+(arr.length?arr.slice(0,lim).map(function(P){return rowHTML(P,cls,max)}).join(''):'<div class="empty">Nobody in this slot.</div>')+(more>0?'<button class="chip more" data-more="'+cls+'" style="margin:8px auto;display:block">Show '+more+' more</button>':'')+'</div>'}
@@ -324,13 +336,15 @@ function renderSunday(el){
      fl.map(function(f){return '<div class="flag sev-'+f.sev+'"><div class="ic">'+f.ic+'</div><div class="fx"><div class="ft">'+f.t+'</div><div class="small muted">'+f.d+'</div></div></div>'}).join('')+'</div>'}).join('');
   var callsSec='<section class="panel"><h2>🧠 Start/Sit Calls <small>WEEK '+D.week+'</small></h2>'+callsH+'<div class="hint">Optimal lineup from Sleeper projections under each league\'s slots &amp; scoring (FLEX/SUPER_FLEX included). Players whose games have kicked off are locked in place. Out/IR/bye count as 0, Doubtful at 25%. Strong = +5 or more and 25%+ better (or replacing an Out/bye starter); Lean = +2 or more; Questionable on the incoming player drops it a level.</div></section>';
   var pk=M.picks.filter(function(x){return x.p.round<=2&&+x.p.season===+x.L.raw.season+1}).sort(function(a,b){return b.p.w-a.p.w});
-  var pkH=pk.length?'<section class="panel"><h2>🎯 Pick Watch <small><a href="#picks">ALL PICKS →</a></small></h2><div class="hint">Rookie order = lowest <b>max PF</b> (potential points) first among non-playoff teams. Every point these teams score raises their max PF, <b>bench included</b>, so all their rostered players are folded into Root Against (bench guys at a discount, since only their best lineup counts). Their W/L only matters near the playoff line.</div>'+pk.slice(0,4).map(pickRow).join('')+(pk.length>4?'<a class="small" href="#picks">+'+(pk.length-4)+' more on Picks →</a>':'')+'</section>':'';
+  var pkH=pk.length?'<section class="panel"><h2>🎯 Pick Watch <small><a href="#picks">ALL PICKS →</a></small></h2><div class="hint">Rookie order = lowest <b>max PF</b> (potential points) first among non-playoff teams. You want these teams to score low <b>potential points</b> (bench included); W/L only matters near the playoff line. Shown here for reference; it doesn\'t feed the Rooting Guide.</div>'+pk.slice(0,4).map(pickRow).join('')+(pk.length>4?'<a class="small" href="#picks">+'+(pk.length-4)+' more on Picks →</a>':'')+'</section>':'';
   el.innerHTML=banner+callsSec+'<section class="panel"><h2>📺 Scoreboard <small>'+cards.length+' LEAGUES · EXP. WINS '+f1(rec.x)+'</small></h2><div class="sbs">'+cardsH+'</div><div class="hint" style="margin-top:6px">Tap a card for both lineups. Sorted by closest game. '+(isWindow()?'Auto-refreshing every 60s.':'Auto-refresh kicks in during game windows.')+'</div></section>'+
    newsStripHTML()+
-   '<section class="panel"><h2>📣 Rooting Guide <small>WEEK '+D.week+'</small></h2>'+chips+'<div class="cols">'+lst(fr,'for','ROOT FOR')+lst(ag,'ag','ROOT AGAINST')+'</div><div class="hint">Impact = projected points still to come × how close the matchup is (win-probability swing), summed across leagues. Tap a player for per-league effects.</div></section>'+
+   '<section class="panel"><h2>📣 Rooting Guide <small>WEEK '+D.week+'</small></h2>'+chips+'<div class="cols">'+(UI.side!=='ag'?lst(fr,'for','ROOT FOR'):'')+(UI.side!=='for'?lst(ag,'ag','ROOT AGAINST'):'')+'</div><div class="hint">Head-to-head only: your starters are Root For, your opponents\' starters are Root Against. Impact = projected points still to come × how close that matchup is (win-probability swing), summed across leagues. Pick Watch and Rival Watch stay in their own sections and don\'t move this list.</div></section>'+
    '<section class="panel"><h2>⚔️ Conflicts</h2>'+confH+'</section>'+
    pkH+skippedHTML();
   $$('#chips .chip',el).forEach(function(b){b.onclick=function(){UI.slot=b.getAttribute('data-s');renderSunday(el)}});
+  $$('#pchips [data-p]',el).forEach(function(b){b.onclick=function(){UI.pos=b.getAttribute('data-p');renderSunday(el)}});
+  $$('#pchips [data-sd]',el).forEach(function(b){b.onclick=function(){UI.side=b.getAttribute('data-sd');renderSunday(el)}});
   $$('[data-more]',el).forEach(function(b){b.onclick=function(){UI.all[b.getAttribute('data-more')]=1;renderSunday(el)}});
   $$('details',el).forEach(function(d){d.addEventListener('toggle',function(){var k=d.getAttribute('data-k')||'';if(k[0]==='c')UI.openCards[k.slice(1)]=d.open;else UI.open[k]=d.open})});
 }
@@ -386,6 +400,7 @@ function boot(){
     return Promise.all([loadLeagues(),loadProj(),loadGames()])}).then(function(){
     D.rostered={};D.anyRostered={};D.leagues.forEach(function(L){Object.keys(L.rosters).forEach(function(k){(L.rosters[k].players||[]).forEach(function(p){D.anyRostered[p]=1})})});D.leagues.forEach(function(L){Object.keys(L.rosters).forEach(function(k){var r=L.rosters[k];(r.players||[]).forEach(function(p){if(k==L.me)D.rostered[p]=1})});L.mu.forEach(function(m){(m.starters||[]).forEach(function(p){D.rostered[p]=1})})});
     var c=playersCached();if(c)D.players=c.p;
+    D.allLeagues=D.leagues;applyLg();lgChips();
     D.at=Date.now();rerender();schedule();
     // background: fill names/injuries for players without projection rows, refresh daily
     var missing=Object.keys(D.rostered).some(function(id){return !D.proj[id]&&isNaN(+id)===false&&!(D.players&&D.players[id])});

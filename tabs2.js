@@ -62,7 +62,7 @@ function renderHome(el){if(!D.leagues.length){el.innerHTML='<div class="panel em
   draw();
   D.leagues.forEach(function(L){futureMatchups(L).then(function(f){odds[L.id]=simOdds(L,f,3000);if(curTab()[0]==='home')draw()})})}
 function rivalsHTML(){var rows=[];D.leagues.forEach(function(L){(L.rivals||[]).filter(function(x){return x.rid!==L.opp}).forEach(function(x){var o=ownerOf(L,x.rid),s=L.sides&&L.sides[x.rid],vs=s&&s.vs?(s.vs.rid===L.me?'YOU':ownerOf(L,s.vs.rid).name):'—';
-    rows.push('<div class="flag"><div class="ic">👀</div><div class="fx"><div class="ft">'+esc(o.name)+' <span class="muted small">'+esc(L.name)+'</span></div><div class="small muted">'+x.w+'-'+x.l+(x.t?'-'+x.t:'')+' · #'+x.rank+' · '+f1(x.pf)+' PF</div><div class="small">This week vs '+esc(vs)+(s&&s.vs&&s.vs.rid!==L.me?' · '+pct(1-s.odds)+' chance they lose':'')+'. You want them to lose (mild Root Against on Sunday).</div></div></div>')})});
+    rows.push('<div class="flag"><div class="ic">👀</div><div class="fx"><div class="ft">'+esc(o.name)+' <span class="muted small">'+esc(L.name)+'</span></div><div class="small muted">'+x.w+'-'+x.l+(x.t?'-'+x.t:'')+' · #'+x.rank+' · '+f1(x.pf)+' PF</div><div class="small">This week vs '+esc(vs)+(s&&s.vs&&s.vs.rid!==L.me?' · '+pct(1-s.odds)+' chance they lose':'')+'. You want them to lose (tracked here only; not part of the Sunday Rooting Guide).</div></div></div>')})});
   return rows.length?'<section class="panel"><h2>👀 Rival Watch</h2><div class="hint">Teams within a game of you in the standings.</div>'+rows.join('')+'</section>':''}
 
 // ---------- SCOUT: leaguemate scouting ----------

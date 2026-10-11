@@ -102,3 +102,5 @@ td.w{white-space:normal}
 .roast{font-size:12px;color:#e6dcc8;margin-top:5px;font-style:italic}
 .mini{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:6px 0}.mini div{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:8px;padding:5px;text-align:center}.mini b{display:block;font:700 18px var(--disp)}.mini small{color:var(--mute);font-size:10px;letter-spacing:.06em}
 .byeg{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:5px}.byeg div{border:1px solid var(--line);border-radius:8px;padding:4px;text-align:center;font-size:11px}.byeg div b{display:block;font:700 13px var(--disp)}.byeg .bad{border-color:rgba(255,107,107,.6);background:rgba(255,107,107,.08)}.byeg .warn{border-color:rgba(255,199,44,.5)}
+
+.lgf{max-width:1000px;margin:0 auto;padding:0 10px 8px}.lgf:empty{display:none}.lgf .chip{height:28px;font-size:12px;padding:0 10px}

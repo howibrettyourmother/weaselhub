@@ -26,8 +26,8 @@ function pickValue(V,season,round,slot,n){var tier=slot?(slot<=n/3?' (Early)':sl
 // ---------- shared extra data ----------
 var X=null;
 function ensure(){if(X)return X;
-  X=Promise.all([loadPlayers().then(function(p){D.players=p}).catch(function(e){D.errors.push('Players DB: '+e.message)})].concat(D.leagues.map(function(L){return values(L).then(function(v){L.V=v})}))).then(function(){
-    D.leagues.forEach(function(L){L.model=teamModel(L)});return D}).catch(function(e){X=null;throw e});
+  X=Promise.all([loadPlayers().then(function(p){D.players=p}).catch(function(e){D.errors.push('Players DB: '+e.message)})].concat((D.allLeagues||D.leagues).map(function(L){return values(L).then(function(v){L.V=v})}))).then(function(){
+    (D.allLeagues||D.leagues).forEach(function(L){L.model=teamModel(L)});return D}).catch(function(e){X=null;throw e});
   return X}
 window.WH_ensure=function(){return ensure()};
 function pos(id){var pi=pinfo(id);return pi.pos==='?'&&D.players&&D.players[id]?D.players[id].p[0]:pi.pos}
@@ -151,7 +151,7 @@ function renderPicks(el){needData(el,function(){
   var all=[];D.leagues.forEach(function(L){L.model.me.picks.forEach(function(p){all.push({L:L,p:p})})});
   var tot=all.reduce(function(a,x){return a+x.p.v},0);
   var pw=(D.M||(D.M=computeAll())).picks;
-  el.innerHTML='<section class="panel"><h2>🎯 Pick Watch</h2><div class="hint">Other teams\' 1sts/2nds you own. Projected slot uses the league rule (checked against last May\'s drafts): non-playoff teams pick by <b>lowest max PF</b> (Sleeper potential points), playoff teams after. Max PF is projected to season end: total so far + this week\'s best lineup + the remaining weeks at each team\'s average. Early/Mid/Late values follow that slot. You want these teams to score <b>low potential points</b>, bench included; their W/L only matters if they\'re near the playoff line.</div>'+(pw.length?pw.slice().sort(function(a,b){return b.p.w-a.p.w}).map(pickRow).join(''):'<div class="empty">Open the Sunday tab first, or you own no other teams\' 1sts/2nds.</div>')+'</section>'+
+  el.innerHTML='<section class="panel"><h2>🎯 Pick Watch</h2><div class="hint">Other teams\' 1sts/2nds you own. Projected slot uses the league rule (checked against last May\'s drafts): non-playoff teams pick by <b>lowest max PF</b> (Sleeper potential points), playoff teams after. Max PF is projected to season end: total so far + this week\'s best lineup + the remaining weeks at each team\'s average. Early/Mid/Late values follow that slot. You want these teams to score <b>low potential points</b>, bench included; their W/L only matters if they\'re near the playoff line. Reference only: the Sunday Rooting Guide covers just your own matchups.</div>'+(pw.length?pw.slice().sort(function(a,b){return b.p.w-a.p.w}).map(pickRow).join(''):'<div class="empty">Open the Sunday tab first, or you own no other teams\' 1sts/2nds.</div>')+'</section>'+
   '<section class="panel"><h2>🎟️ All My Picks <small>'+all.length+' PICKS · '+int(tot)+'</small></h2>'+D.leagues.map(function(L){var ps=L.model.me.picks.slice().sort(function(a,b){return a.season-b.season||a.round-b.round});
     return '<h3>'+esc(L.name)+'</h3><div class="tw"><table><tr><th>Pick</th><th>From</th><th>Max PF</th><th>Proj</th><th>Value</th></tr>'+ps.map(function(p){var s=L.model.st[p.orig]||{},near=p.season===+L.raw.season+1;return '<tr><td>'+p.season+' '+ORD[p.round]+'</td><td class="w">'+(p.orig===L.me?'<span class="muted">own</span>':esc(ownerOf(L,p.orig).name))+'</td><td>'+(near&&s.mpf!=null?int(s.mpf):'–')+'</td><td>'+(near&&s.slot?'#'+p.round+'.'+String(s.slot).padStart(2,'0'):'–')+'</td><td>'+int(p.v)+'</td></tr>'}).join('')+'</table></div>'}).join('')+CREDIT+'</section>'+
   '<section class="panel"><h2>🍼 Rookie Watch</h2><div id="rook">'+spin('Loading your drafts…')+'</div></section>';
