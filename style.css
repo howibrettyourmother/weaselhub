@@ -131,3 +131,4 @@ td.w{white-space:normal}
 .lve.td .dl{font:700 18px/1 var(--disp)}.lve.td.new{animation:tdpop 1.4s ease-out}@keyframes tdpop{0%{transform:scale(.98);box-shadow:0 0 0 0 rgba(255,199,44,.55)}40%{transform:scale(1.01)}100%{transform:none;box-shadow:0 0 0 12px rgba(255,199,44,0)}}
 .lve.tdb.new{animation-name:tdpopb}@keyframes tdpopb{0%{box-shadow:0 0 0 0 rgba(255,107,107,.5)}100%{box-shadow:0 0 0 12px rgba(255,107,107,0)}}
 @media (prefers-reduced-motion:reduce){.lve.td.new{animation:none}}
+.wl{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)}.wl:last-child{border-bottom:0}.wlr{display:flex;justify-content:space-between;gap:8px;font-size:13px;flex-wrap:wrap}.wl .late{margin-top:2px}
