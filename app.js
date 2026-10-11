@@ -72,7 +72,7 @@ function loadGames(){
       var state=st.type.state,per=st.period||0,clk=st.clock||0,frac=1;
       if(state==='in'){var el=per<=4?((per-1)*900+(900-clk))/3600:0.985;frac=Math.max(0.015,Math.min(1,1-el))}else if(state==='post')frac=0;
       var tms=c.competitors.map(function(x){return {ab:ESPN_FIX[x.team.abbreviation]||x.team.abbreviation,score:+x.score||0,ha:x.homeAway}});
-      var info={id:ev.id,kick:kick,slot:slotOf(kick),state:state,frac:frac,detail:st.type.shortDetail,teams:tms,name:ev.shortName};
+      var od=(c.odds&&c.odds[0])||{};var info={id:ev.id,kick:kick,slot:slotOf(kick),state:state,frac:frac,detail:st.type.shortDetail,teams:tms,name:ev.shortName,ou:+od.overUnder||null,line:od.details||null};
       tms.forEach(function(t){g[t.ab]=info})});
     D.games=g;D.byes=byes;D.gamesOk=true;D.gamesSrc='ESPN'}).catch(function(e){
     // fallback: Sleeper schedule (dates + status only, no kickoff times)
@@ -202,7 +202,7 @@ function computeAll(){
         var P=players[id]=players[id]||{id:id,line:l,ent:[],net:0,netBase:0};
         P.ent.push({L:L,imp:imp,base:base,who:'pick',tag:'🎯 for the pick ('+L.name+', '+p.label+') · max PF'+(x.wk.set[id]?'':' (bench counts)'),proj:l.proj,act:l.act,state:l.state});P.net+=imp;P.netBase+=base})});
     var me=sides[L.me],op=sides[L.opp];if(me&&op)cards.push({L:L,me:me,op:op});
-    flags=flags.concat(startSit(L,me));
+    flags=flags.concat(startSit(L,me).filter(function(f){return f.sev!=='md'}));L.calls=startSitCalls(L);
     pw.forEach(function(p){var s=sides[p.rid];picks.push({L:L,p:p,side:s,opp:s&&s.vs})});
   });
   var list=Object.keys(players).map(function(k){var P=players[k];P.conf=P.ent.some(function(e){return e.base>0.02})&&P.ent.some(function(e){return e.base<-0.02});
@@ -213,6 +213,46 @@ function computeAll(){
 function label(x){x=Math.abs(x);return x>=0.30?'Huge':x>=0.15?'Big':x>=0.06?'Moderate':'Small'}
 
 // ---------------- start/sit check ----------------
+// ---------------- Start/Sit Calls: optimal lineup over unlocked players ----------------
+function hungarian(a){// min-cost assignment, rows<=cols; returns col index per row
+  var n=a.length,m=a[0].length,INF=1e18,u=new Array(n+1).fill(0),v=new Array(m+1).fill(0),p=new Array(m+1).fill(0),way=new Array(m+1).fill(0);
+  for(var i=1;i<=n;i++){p[0]=i;var j0=0,minv=new Array(m+1).fill(INF),used=new Array(m+1).fill(false);
+    do{used[j0]=true;var i0=p[j0],delta=INF,j1=0;for(var j=1;j<=m;j++)if(!used[j]){var cur=a[i0-1][j-1]-u[i0]-v[j];if(cur<minv[j]){minv[j]=cur;way[j]=j0}if(minv[j]<delta){delta=minv[j];j1=j}}
+      for(j=0;j<=m;j++){if(used[j]){u[p[j]]+=delta;v[j]-=delta}else minv[j]-=delta}j0=j1}while(p[j0]!==0);
+    do{var jj=way[j0];p[j0]=p[jj];j0=jj}while(j0)}
+  var r=new Array(n).fill(-1);for(var j=1;j<=m;j++)if(p[j])r[p[j]-1]=j-1;return r}
+var INJ_ZERO={Out:1,IR:1,PUP:1,Sus:1,NA:1,DNR:1,COV:1};
+var SSR=['{X} over {Y}. The Weasel has done the math, and the math is rude to {Y}.','Start {X}. Benching {Y} is not personal. It is, a little.','{X} in, {Y} out. If this goes wrong, blame the projections. Loudly.','{Y} had a nice run. Sit him. {X} is the play.'];
+function startSitCalls(L){var r=L.rosters[L.me],m=L.mu.filter(function(x){return x.roster_id===L.me})[0];if(!m||!r)return null;
+  var now=Date.now(),starters=(m.starters||[]).slice(),excl={};(r.reserve||[]).forEach(function(x){excl[x]=1});(r.taxi||[]).forEach(function(x){excl[x]=1});
+  function line(id){var l=playerLine(L,id,m.players_points);l.locked=!!(l.g&&(l.state!=='pre'||l.g.kick<=now));
+    var inj=l.pi.inj||'';l.eff=INJ_ZERO[inj]||(!l.pi.team)||(D.gamesOk&&!l.g)?0:inj==='Doubtful'?l.proj*0.25:l.proj;return l}
+  var open=[],openIdx=[],fixedIds={},cur={};
+  L.slots.forEach(function(slot,i){var id=starters[i];if(id&&id!=='0'){var l=line(id);if(l.locked){fixedIds[id]=1;return}cur[i]=l}open.push(slot);openIdx.push(i)});
+  var pool=[],seen={};(r.players||[]).forEach(function(id){if(excl[id]||fixedIds[id]||seen[id])return;var l=line(id);if(l.locked)return;seen[id]=1;pool.push(l)});
+  if(!open.length)return {L:L,calls:[],gain:0,locked:true};
+  var curSum=0;openIdx.forEach(function(i){if(cur[i])curSum+=cur[i].eff});
+  var nc=Math.max(pool.length,open.length),A=open.map(function(slot,k){var el=ELIG[slot]||[slot],ci=cur[openIdx[k]];var row=[];for(var j=0;j<nc;j++){var l=pool[j];
+      row.push(!l?0:(l.pi.fp||[]).some(function(p){return el.indexOf(p)>=0})?-(l.eff+(ci&&ci.id===l.id?0.05:0)+(starters.indexOf(l.id)>=0?0.02:0)):1e6)}return row});
+  var asg=hungarian(A),best={},optSum=0;asg.forEach(function(j,k){var l=pool[j];if(l&&A[k][j]<1e5){best[openIdx[k]]=l;optSum+=l.eff}});
+  var inSet={},outSet={};openIdx.forEach(function(i){if(best[i])inSet[best[i].id]=best[i];if(cur[i])outSet[cur[i].id]=cur[i]});
+  var ins=[],outs=[];Object.keys(inSet).forEach(function(id){if(!outSet[id])ins.push(inSet[id])});Object.keys(outSet).forEach(function(id){if(!inSet[id])outs.push(outSet[id])});
+  var emptyN=openIdx.filter(function(i){return !cur[i]}).length;
+  ins.sort(function(a,b){return b.eff-a.eff});outs.sort(function(a,b){return a.eff-b.eff});
+  var slotOfIn={};openIdx.forEach(function(i){if(best[i])slotOfIn[best[i].id]=L.slots[i]});
+  var calls=ins.map(function(x,k){var y=k<emptyN?null:outs[k-emptyN]||null,g=x.eff-(y?y.eff:0);
+    var lvl=g>=5&&(!y||g>=0.25*Math.max(1,y.proj))?2:g>=2?1:0,why=[];
+    if(y&&(INJ_ZERO[y.pi.inj]||!y.pi.team||(D.gamesOk&&!y.g))){lvl=2;why.push(esc(y.pi.n)+(y.pi.team?(y.g?' is '+esc(y.pi.inj):' is on BYE'):' has no NFL team'))}
+    else if(y&&y.pi.inj==='Doubtful'){lvl=Math.max(lvl,1);why.push(esc(y.pi.n)+' is Doubtful')}
+    else if(y&&y.pi.inj==='Questionable'){lvl=Math.min(2,lvl+(g>=2?1:0));why.push(esc(y.pi.n)+' is Questionable')}
+    if(x.pi.inj==='Questionable'){lvl=Math.max(0,lvl-1);why.unshift(esc(x.pi.n)+' is Questionable, check inactives')}
+    why.unshift(y?'Projected '+f1(x.proj)+' vs '+f1(y.proj)+' (+'+f1(g)+')':'Fills an empty slot ('+f1(x.proj)+' proj)');
+    var gx=x.g;if(gx&&gx.ou)why.push(esc(x.pi.team)+' game O/U '+gx.ou+(gx.line?' ('+esc(gx.line)+')':''));
+    var c={x:x,y:y,slot:slotOfIn[x.id],gain:g,lvl:lvl,conf:['Coin flip','Lean','Strong'][lvl],why:why,kick:Math.min(x.g?+x.g.kick:9e15,y&&y.g?+y.g.kick:9e15)};
+    if(lvl===2&&y)c.roast=SSR[(x.id.length+y.id.length+D.week)%SSR.length].replace('{X}',x.pi.n).replace('{Y}',y.pi.n).replace('{Y}',y.pi.n);
+    return c}).filter(function(c){return c.gain>=0.3||!c.y});
+  return {L:L,calls:calls,gain:Math.max(0,optSum-curSum),cur:curSum,opt:optSum,link:'https://sleeper.com/leagues/'+L.id+'/team'}}
+function callsSummary(cs){if(!cs)return '';if(!cs.calls.length)return cs.locked?'Lineup locked':'Lineup\'s set ✅';var n=cs.calls.length;return n+' swap'+(n>1?'s':'')+' worth +'+f1(cs.calls.reduce(function(a,c){return a+c.gain},0))}
 function startSit(L,me){var out=[],r=L.rosters[L.me],m=L.mu.filter(function(x){return x.roster_id===L.me})[0];if(!m)return out;
   var starters=m.starters||[],set={};starters.forEach(function(s){set[s]=1});
   var excl={};(r.reserve||[]).forEach(function(x){excl[x]=1});(r.taxi||[]).forEach(function(x){excl[x]=1});
@@ -276,14 +316,20 @@ function renderSunday(el){
   var conf=M.players.filter(function(P){return P.conf}).sort(function(a,b){return Math.abs(b.key)-Math.abs(a.key)});
   var confH=conf.length?conf.map(function(P){return '<div class="flag"><div class="ic">'+head(P.id)+'</div><div class="fx"><div class="ft">'+esc(P.line.pi.n)+' <span class="pill '+(P.key>=0?'g':'r')+'">'+(P.key>=0?'ROOT FOR':'ROOT AGAINST')+'</span> <span class="muted small">net '+(P.key>=0?'+':'−')+f1(Math.abs(P.key)*100)+'%</span></div><div class="small muted">'+P.ent.map(function(e){var s=P.done?e.base:e.imp;return '<span class="'+(s>=0?'pe':'ne')+'">'+(s>=0?'+':'−')+f1(Math.abs(s)*100)+'%</span> '+esc(e.L.name)+' ('+esc(e.tag)+')'}).join(' · ')+'</div></div></div>'}).join(''):'<div class="empty">No conflicts this week. Clean conscience.</div>';
   var flags=M.flags.slice().sort(function(a,b){var o={hi:0,md:1,lo:2};return o[a.sev]-o[b.sev]});
-  var flagH=flags.length?flags.map(function(f){return '<div class="flag sev-'+f.sev+'"><div class="ic">'+f.ic+'</div><div class="fx"><div class="ft">'+f.t+'</div><div class="small muted">'+f.d+'</div></div><a class="small" href="'+f.link+'" target="_blank" rel="noopener">'+esc(f.L.name)+' ↗</a></div>'}).join(''):'<div class="empty">All lineups look clean ✅</div>';
+  var CC={2:'g',1:'y',0:''};
+  var callsH=D.leagues.map(function(L){var cs=L.calls;if(!cs)return '';var fl=flags.filter(function(f){return f.L===L&&!(f.sev==='hi'&&cs.calls.length)});
+    return '<div class="box" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3 style="margin:2px 0">'+esc(L.name)+'</h3><a class="small" href="'+cs.link+'" target="_blank" rel="noopener">Set lineup in Sleeper ↗</a></div>'+
+     '<div class="small muted">'+callsSummary(cs)+(cs.calls.length?' · open slots proj '+f1(cs.cur)+' → '+f1(cs.opt):'')+'</div>'+
+     cs.calls.map(function(c){return '<div class="flag"><div class="ic">'+head(c.x.id)+'</div><div class="fx"><div class="ft">Start '+esc(c.x.pi.n)+(c.y?' over '+esc(c.y.pi.n):'')+' <span class="muted small">('+esc(c.slot)+')</span> <span class="pill '+CC[c.lvl]+'">'+c.conf.toUpperCase()+'</span></div><div class="small"><b style="color:var(--for)">'+f1(c.x.proj)+'</b>'+(c.y?' vs <b style="color:var(--ag)">'+f1(c.y.proj)+'</b>':'')+' proj · <b>+'+f1(c.gain)+'</b>'+(c.kick<9e15?' · locks '+ETTIME.format(new Date(c.kick))+' ET':'')+'</div><div class="small muted">'+c.why.join(' · ')+'</div>'+(c.roast?'<div class="small" style="color:var(--gold);font-style:italic">🦦 '+esc(c.roast)+'</div>':'')+'</div></div>'}).join('')+
+     fl.map(function(f){return '<div class="flag sev-'+f.sev+'"><div class="ic">'+f.ic+'</div><div class="fx"><div class="ft">'+f.t+'</div><div class="small muted">'+f.d+'</div></div></div>'}).join('')+'</div>'}).join('');
+  var callsSec='<section class="panel"><h2>🧠 Start/Sit Calls <small>WEEK '+D.week+'</small></h2>'+callsH+'<div class="hint">Optimal lineup from Sleeper projections under each league\'s slots &amp; scoring (FLEX/SUPER_FLEX included). Players whose games have kicked off are locked in place. Out/IR/bye count as 0, Doubtful at 25%. Strong = +5 or more and 25%+ better (or replacing an Out/bye starter); Lean = +2 or more; Questionable on the incoming player drops it a level.</div></section>';
   var pk=M.picks.filter(function(x){return x.p.round<=2&&+x.p.season===+x.L.raw.season+1}).sort(function(a,b){return b.p.w-a.p.w});
   var pkH=pk.length?'<section class="panel"><h2>🎯 Pick Watch <small><a href="#picks">ALL PICKS →</a></small></h2><div class="hint">Rookie order = lowest <b>max PF</b> (potential points) first among non-playoff teams. Every point these teams score raises their max PF, <b>bench included</b>, so all their rostered players are folded into Root Against (bench guys at a discount, since only their best lineup counts). Their W/L only matters near the playoff line.</div>'+pk.slice(0,4).map(pickRow).join('')+(pk.length>4?'<a class="small" href="#picks">+'+(pk.length-4)+' more on Picks →</a>':'')+'</section>':'';
-  el.innerHTML=banner+'<section class="panel"><h2>📺 Scoreboard <small>'+cards.length+' LEAGUES · EXP. WINS '+f1(rec.x)+'</small></h2><div class="sbs">'+cardsH+'</div><div class="hint" style="margin-top:6px">Tap a card for both lineups. Sorted by closest game. '+(isWindow()?'Auto-refreshing every 60s.':'Auto-refresh kicks in during game windows.')+'</div></section>'+
+  el.innerHTML=banner+callsSec+'<section class="panel"><h2>📺 Scoreboard <small>'+cards.length+' LEAGUES · EXP. WINS '+f1(rec.x)+'</small></h2><div class="sbs">'+cardsH+'</div><div class="hint" style="margin-top:6px">Tap a card for both lineups. Sorted by closest game. '+(isWindow()?'Auto-refreshing every 60s.':'Auto-refresh kicks in during game windows.')+'</div></section>'+
    newsStripHTML()+
    '<section class="panel"><h2>📣 Rooting Guide <small>WEEK '+D.week+'</small></h2>'+chips+'<div class="cols">'+lst(fr,'for','ROOT FOR')+lst(ag,'ag','ROOT AGAINST')+'</div><div class="hint">Impact = projected points still to come × how close the matchup is (win-probability swing), summed across leagues. Tap a player for per-league effects.</div></section>'+
    '<section class="panel"><h2>⚔️ Conflicts</h2>'+confH+'</section>'+
-   '<section class="panel"><h2>🩺 Start/Sit Check</h2>'+flagH+'</section>'+pkH+skippedHTML();
+   pkH+skippedHTML();
   $$('#chips .chip',el).forEach(function(b){b.onclick=function(){UI.slot=b.getAttribute('data-s');renderSunday(el)}});
   $$('[data-more]',el).forEach(function(b){b.onclick=function(){UI.all[b.getAttribute('data-more')]=1;renderSunday(el)}});
   $$('details',el).forEach(function(d){d.addEventListener('toggle',function(){var k=d.getAttribute('data-k')||'';if(k[0]==='c')UI.openCards[k.slice(1)]=d.open;else UI.open[k]=d.open})});

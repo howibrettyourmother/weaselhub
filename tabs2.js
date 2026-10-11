@@ -53,7 +53,7 @@ function renderHome(el){if(!D.leagues.length){el.innerHTML='<div class="panel em
     var o=odds&&odds[L.me];
     return '<a class="box" style="display:block;color:inherit" href="#sunday"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:2px 0">'+esc(L.name)+'</h3><span class="small muted">'+esc(ownerOf(L,L.me).name)+'</span></div>'+
      '<div class="mini"><div><b>'+me.w+'-'+me.l+(me.t?'-'+me.t:'')+'</b><small>RECORD</small></div><div><b>#'+me.rank+'</b><small>OF '+n+'</small></div><div><b>'+(o?pct(o.po):'…')+'</b><small>PLAYOFFS</small></div><div><b>'+(o?pct(o.top):'…')+'</b><small>#1 SEED</small></div></div>'+
-     '<div class="small muted">'+f1(me.pf)+' PF (#'+me.pfRank+') · top '+pt+' make it</div>'+live+'</a>'}
+     '<div class="small muted">'+f1(me.pf)+' PF (#'+me.pfRank+') · top '+pt+' make it</div>'+live+(L.calls?'<div class="small" style="margin-top:3px">🧠 '+(L.calls.calls.length?'<b style="color:var(--gold)">'+callsSummary(L.calls)+'</b>':callsSummary(L.calls))+'</div>':'')+'</a>'}
   var odds={};
   function draw(){var tot={w:0,l:0};D.leagues.forEach(function(L){var s=standings(L)[L.me];tot.w+=s.w;tot.l+=s.l});
     var exp=D.M.cards.reduce(function(a,c){return a+c.me.odds},0);
