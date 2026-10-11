@@ -88,15 +88,47 @@ function pill(mode){return '<span class="pill '+(mode==='CONTENDER'?'g':mode==='
 // ---------- BYE planner (rendered inside Rosters) ----------
 var _sched=null;
 function schedule(){if(_sched)return _sched;return (_sched=SC(SAPI+'/schedule/nfl/regular/'+D.season,864e5).then(function(all){var played={};all.forEach(function(g){(played[g.week]=played[g.week]||{})[g.home]=1;played[g.week][g.away]=1});return played}).catch(function(){return null}))}
-window.byePlannerHTML=function(){return schedule().then(function(played){if(!played)return '<div class="hint">Schedule unavailable.</div>';
-  return D.leagues.map(function(L){var r=L.rosters[L.me],pws=(L.raw.settings||{}).playoff_week_start||15,ids=(r.players||[]).filter(function(id){return (r.reserve||[]).indexOf(id)<0}),start=L.model.me.starters;
-    var cells=[];for(var w=D.week;w<pws&&w<=18;w++){var pw=played[w]||{};var out=start.filter(function(id){var t=pinfo(id).team;return t&&!pw[t]});
-      // can we still fill every starting slot with players who play that week?
-      var avail=ids.filter(function(id){var t=pinfo(id).team;return t&&pw[t]}),left=avail.slice(),empty=0;
-      L.slots.map(function(s){return ELIG[s]||[s]}).sort(function(a,b){return a.length-b.length}).forEach(function(e){var i=-1,bv=-1;left.forEach(function(id,j){var fp=pinfo(id).fp||[];var v=(L.V&&L.V.p[id])||projFor(L,id)||1;if(fp.some(function(x){return e.indexOf(x)>=0})&&v>bv){bv=v;i=j}});if(i>=0)left.splice(i,1);else empty++});
-      cells.push('<div class="'+(empty?'bad':out.length>=3?'warn':'')+'" title="'+esc(out.map(function(id){return pinfo(id).n}).join(', '))+'"><b>W'+w+'</b>'+(out.length?out.length+' starter'+(out.length>1?'s':'')+' out':'clear')+(empty?'<br><span style="color:var(--ag)">'+empty+' hole'+(empty>1?'s':'')+'</span>':'')+'</div>')}
-    var worst=[];for(var w2=D.week;w2<pws&&w2<=18;w2++){var p2=played[w2]||{};var o2=start.filter(function(id){var t=pinfo(id).team;return t&&!p2[t]});if(o2.length)worst.push('W'+w2+': '+o2.map(function(id){return esc(pinfo(id).n)}).join(', '))}
-    return '<h3>'+esc(L.name)+'</h3><div class="byeg">'+cells.join('')+'</div>'+(worst.length?'<div class="small muted" style="margin-top:4px">'+worst.join(' · ')+'</div>':'')}).join('')})};
+// ---------- Bye Planner v2: core lineup (whole roster, ignoring byes/short injuries) vs best available fill-in each week ----------
+var _sst=null;function seasonStats(){if(_sst)return _sst;return (_sst=SC(SAPI+'/stats/nfl/'+D.season+'?season_type=regular&position[]=QB&position[]=RB&position[]=WR&position[]=TE&position[]=K&position[]=DEF',30*6e4).then(function(a){var m={};(a||[]).forEach(function(x){m[x.player_id]=x.stats||{}});return m}).catch(function(){return {}}))}
+var BYEP=window.BYEP={};
+function assign(L,ids,val){var open=L.slots;if(!ids.length)return {sum:0,by:open.map(function(){return null})};
+  var A=open.map(function(slot){var el=ELIG[slot]||[slot];return ids.map(function(id){return (pinfo(id).fp||[]).some(function(p){return el.indexOf(p)>=0})?-val(id):1e6})});
+  var nc=Math.max(ids.length,open.length);A=A.map(function(r){while(r.length<nc)r.push(0);return r});
+  var as=hungarian(A),by=[],sum=0;as.forEach(function(j,k){var id=ids[j];if(id&&A[k][j]<1e5){by.push(id);sum+=val(id)}else by.push(null)});return {sum:sum,by:by}}
+var LONG_INJ={IR:1,PUP:1},SHORT_OUT={Out:1,Doubtful:1,Sus:1,Inactive:1,NA:1,DNR:1,COV:1};
+window.byePlannerHTML=function(){return Promise.all([schedule(),seasonStats()]).then(function(r){var played=r[0],SS=r[1];if(!played)return '<div class="hint">Schedule unavailable.</div>';
+  return D.leagues.map(function(L){var ro=L.rosters[L.me],pws=(L.raw.settings||{}).playoff_week_start||15,last=Math.min(pws-1,18);
+    var ids=(ro.players||[]).filter(function(id){return (ro.taxi||[]).indexOf(id)<0});
+    var ppg={};ids.forEach(function(id){var st=SS[id],gp=st&&(+st.gp||+st.gms_active||0);ppg[id]=gp?scoreStats(st,L.ss)/gp:null});
+    function core(id){var p=ppg[id],w=projFor(L,id);var v=p!=null&&w>0?0.6*p+0.4*w:p!=null?p:w;return (v||0)+((L.V&&L.V.p[id])||0)/1e5}
+    var C=assign(L,ids,core),coreIds=C.by.filter(Boolean),coreSum=C.sum;
+    function wkVal(id,w){if(w===D.week){var pr=projFor(L,id);if(pr>0)return pr}return core(id)}
+    function unavail(id,w){var pi=pinfo(id),t=pi.team,pw=played[w]||{};if(!t)return {k:'inj',t:'no NFL team'};if(!pw[t])return {k:'bye',t:'BYE'};
+      if(w<D.week)return null;if(LONG_INJ[pi.inj]&&w<=D.week+3)return {k:'inj',t:pi.inj+(pi.body?' ('+pi.body+')':'')+' · out until activated'};
+      if(SHORT_OUT[pi.inj]&&w===D.week)return {k:'inj',t:pi.inj+(pi.body?' ('+pi.body+')':'')};return null}
+    var weeks={},cells=[];
+    for(var w=1;w<=last;w++){var out=[];coreIds.forEach(function(id){var u=unavail(id,w);if(u)out.push({id:id,u:u})});
+      var outSet={};out.forEach(function(o){outSet[o.id]=1});var avail=ids.filter(function(id){return !unavail(id,w)});
+      var vw=function(id){return wkVal(id,w)},F=assign(L,avail,vw),coreW=coreIds.reduce(function(a,id){return a+vw(id)},0);
+      // keep core players in their core slot when available so the drill-down reads slot by slot
+      var holes=F.by.filter(function(x){return !x}).length,loss=Math.max(0,coreW-F.sum);
+      var sev=holes||loss>=Math.max(20,0.15*coreW)?'bad':(loss>=8||out.length>=3)?'warn':'';
+      weeks[w]={w:w,out:out,F:F,C:C,coreW:coreW,loss:loss,holes:holes,vw:vw,past:w<D.week};
+      cells.push('<button type="button" class="'+sev+(w<D.week?' past':'')+(w===D.week?' cur':'')+'" data-bl="'+L.id+'" data-bw="'+w+'"><b>W'+w+'</b>'+(out.length?'<span class="bo">'+(out.filter(function(o){return o.u.k==='bye'}).length?'🛌'+out.filter(function(o){return o.u.k==='bye'}).length:'')+(out.filter(function(o){return o.u.k==='inj'}).length?' 🚑'+out.filter(function(o){return o.u.k==='inj'}).length:'')+'</span><span class="bl">−'+f1(loss)+'</span>':'<span class="bo">clear</span>')+(holes?'<span style="color:var(--ag)">'+holes+' hole'+(holes>1?'s':'')+'</span>':'')+'</button>')}
+    BYEP[L.id]={L:L,weeks:weeks,coreIds:coreIds,ppg:ppg};
+    var worst=Object.keys(weeks).map(function(k){return weeks[k]}).filter(function(x){return x.w>=D.week}).sort(function(a,b){return b.holes-a.holes||b.loss-a.loss})[0];
+    return '<h3>'+esc(L.name)+'</h3><div class="small muted" style="margin:-2px 0 4px">Core lineup ~'+f1(coreSum)+' pts/wk'+(worst&&worst.loss>0.5?' · worst upcoming: <b style="color:var(--gold)">W'+worst.w+' −'+f1(worst.loss)+'</b>'+(worst.holes?' ('+worst.holes+' unfillable)':''):'')+'</div><div class="byeg">'+cells.join('')+'</div><div class="byed" id="bd-'+L.id+'">'+byeDrill(L.id,D.week)+'</div>'}).join('')})};
+function byeDrill(lid,w){var B=BYEP[lid];if(!B||!B.weeks[w])return '';var x=B.weeks[w],L=B.L,core=x.C.by,fill=x.F.by,rows=[];
+  var coreSet={},fillSet={},slotOf={};core.forEach(function(id){if(id)coreSet[id]=1});fill.forEach(function(id,i){if(id){fillSet[id]=1;slotOf[id]=L.slots[i]}});
+  var ins=fill.filter(function(id){return id&&!coreSet[id]}).sort(function(a,b){return x.vw(b)-x.vw(a)}),outs=core.filter(function(id){return id&&!fillSet[id]&&x.out.some(function(o){return o.id===id})}).sort(function(a,b){return x.vw(b)-x.vw(a)});
+  outs.forEach(function(c,k){var f=ins[k],u=x.out.filter(function(o){return o.id===c})[0];
+    rows.push('<div class="flag"><div class="ic">'+head(c)+'</div><div class="fx"><div class="ft">'+esc(pinfo(c).n)+' '+posChip(pinfo(c).pos)+' '+(u?(u.u.k==='bye'?'<span class="tag">🛌 BYE</span>':'<span class="tag" style="color:var(--ag)">🚑 '+esc(u.u.t)+'</span>'):'')+' <span class="muted small">core '+f1(x.vw(c))+'</span></div><div class="small">'+(f?'→ <b>'+esc(pinfo(f).n)+'</b> '+posChip(pinfo(f).pos)+' in '+esc(slotOf[f])+' · '+f1(x.vw(f))+' <span class="muted">('+(x.vw(f)-x.vw(c)>=0?'+':'−')+f1(Math.abs(x.vw(f)-x.vw(c)))+')</span>':'<b style="color:var(--ag)">⛔ No eligible fill-in</b>')+'</div></div></div>')});
+  fill.forEach(function(id,i){if(!id)rows.push('<div class="small" style="color:var(--ag);margin:4px 0">⛔ '+esc(L.slots[i])+' slot unfillable this week</div>')});
+  var outH=x.out.length?'<div class="small" style="margin:4px 0">Core starters out: '+x.out.map(function(o){return '<span class="tag"'+(o.u.k==='inj'?' style="color:var(--ag)"':'')+'>'+(o.u.k==='bye'?'🛌 ':'🚑 ')+esc(pinfo(o.id).n)+' · '+esc(o.u.k==='bye'?'bye':o.u.t)+'</span>'}).join(' ')+'</div>':'';
+  return '<div class="box" style="margin-top:6px"><div style="display:flex;justify-content:space-between"><b style="font-family:var(--disp);color:var(--gold)">WEEK '+w+(x.past?' (PAST)':w===D.week?' (THIS WEEK)':'')+'</b><span class="small">'+(x.out.length?'−'+f1(x.loss)+' pts vs core'+(x.holes?' · <b style="color:var(--ag)">'+x.holes+' unfillable</b>':''):'Full core lineup available ✅')+'</span></div>'+(rows.length?rows.join(''):outH)+'</div>'}
+window.byeBind=function(root){root.addEventListener('click',function(e){var b=e.target.closest('[data-bw]');if(!b)return;var lid=b.getAttribute('data-bl'),w=+b.getAttribute('data-bw'),d=document.getElementById('bd-'+lid);if(!d)return;
+  var on=b.classList.contains('sel');$$('[data-bl="'+lid+'"]',root).forEach(function(x){x.classList.remove('sel')});if(on){d.innerHTML='';return}b.classList.add('sel');d.innerHTML=byeDrill(lid,w)});
+  D.leagues.forEach(function(L){var c=root.querySelector('[data-bl="'+L.id+'"][data-bw="'+D.week+'"]');if(c)c.classList.add('sel')})};
 
 window.TAB_ORDER=[['home','sunday','news','recap'],['rosters','exposure','picks'],['trade','waivers','scout']];
 TABS.unshift(['home','🏠','HOME',renderHome]);
