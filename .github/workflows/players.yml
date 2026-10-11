@@ -17,5 +17,5 @@ jobs:
         run: |
           git config user.name 'weaselhub-bot'; git config user.email 'actions@users.noreply.github.com'
           git add data/players.json
-          git commit -m 'data: slim players file [skip ci]' || exit 0
+          git commit -m 'data: slim players file' || exit 0
           for i in 1 2 3; do git pull --rebase -q && git push -q && exit 0; sleep 5; done; exit 1
