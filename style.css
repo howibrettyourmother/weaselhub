@@ -132,3 +132,4 @@ td.w{white-space:normal}
 .lve.tdb.new{animation-name:tdpopb}@keyframes tdpopb{0%{box-shadow:0 0 0 0 rgba(255,107,107,.5)}100%{box-shadow:0 0 0 12px rgba(255,107,107,0)}}
 @media (prefers-reduced-motion:reduce){.lve.td.new{animation:none}}
 .wl{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05)}.wl:last-child{border-bottom:0}.wlr{display:flex;justify-content:space-between;gap:8px;font-size:13px;flex-wrap:wrap}.wl .late{margin-top:2px}
+.wln{font-size:13px;font-weight:700}.wlg{display:grid;grid-template-columns:1fr;gap:1px;font-size:12px;margin-top:1px}.wls{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.wls b{color:var(--ink)}.wlk{opacity:.8;text-transform:uppercase;font-size:10px;letter-spacing:.05em}.wls .gl{margin:0 3px 0 0}
