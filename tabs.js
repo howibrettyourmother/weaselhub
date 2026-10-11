@@ -196,10 +196,13 @@ function renderRecap(el){var w=+(QS.get('rw')||0)||(D.games&&Object.keys(D.games
 // ---------- NEWS ----------
 var NEWSK='wh:news:v1';
 function myIds(){var o={};D.leagues.forEach(function(L){var r=L.rosters[L.me];(r.players||[]).forEach(function(id){o[id]=o[id]||{lg:[],start:[]};o[id].lg.push(L.name)});var m=L.mu.filter(function(x){return x.roster_id===L.me})[0];(m&&m.starters||[]).forEach(function(id){if(o[id])o[id].start.push(L.name)})});return o}
-function injuryItems(){var mine=myIds(),snap=LS.get('wh:injsnap'),chg=LS.get('wh:injchg')||[],now=Date.now(),cur={},items=[];
-  Object.keys(mine).forEach(function(id){if(isNaN(+id))return;var pi=pinfo(id),db=D.players&&D.players[id];cur[id]={i:pi.inj||null,pr:db&&db.pr||null,b:pi.body||null}});
-  if(snap&&snap.p){Object.keys(cur).forEach(function(id){var a=snap.p[id],b=cur[id];if(!a)return;if((a.i||null)!==(b.i||null))chg.push({id:id,at:now,from:a.i,to:b.i,b:b.b});else if((a.pr||null)!==(b.pr||null)&&b.pr)chg.push({id:id,at:now,pr:b.pr})})}
-  chg=chg.filter(function(c){return now-c.at<7*864e5}).slice(-80);LS.set('wh:injchg',chg);LS.set('wh:injsnap',{at:now,p:cur});
+function injuryItems(){var mine=myIds(),snap=LS.get('wh:injsnap2'),chg=LS.get('wh:injchg2')||[],now=Date.now(),cur={},pfc={},items=[];
+  Object.keys(mine).forEach(function(id){if(isNaN(+id))return;var pi=pinfo(id),db=D.players&&D.players[id];cur[id]={i:pi.inj||null,pr:db&&db.pr||null,b:pi.body||null};if(db)pfc[id]={i:db.i||(db.s==='Inactive'?'Inactive':null),pr:db.pr||null,b:db.b||null}});
+  var pfNew=D.pfAt&&(!snap||snap.at!==D.pfAt);
+  if(pfNew&&snap&&snap.p){Object.keys(pfc).forEach(function(id){var a=snap.p[id],b=pfc[id];if(!a)return;if((a.i||null)!==(b.i||null))chg.push({id:id,at:now,from:a.i,to:b.i,b:b.b});else if((a.pr||null)!==(b.pr||null)&&b.pr)chg.push({id:id,at:now,pr:b.pr})})}
+  if(0&&snap&&snap.p){Object.keys(cur).forEach(function(id){var a=snap.p[id],b=cur[id];if(!a)return;if((a.i||null)!==(b.i||null))chg.push({id:id,at:now,from:a.i,to:b.i,b:b.b});else if((a.pr||null)!==(b.pr||null)&&b.pr)chg.push({id:id,at:now,pr:b.pr})})}
+  chg=chg.filter(function(c){return now-c.at<7*864e5}).slice(-80);LS.set('wh:injchg2',chg);if(pfNew)LS.set('wh:injsnap2',{at:D.pfAt,p:pfc});
+  chg=chg.filter(function(c){var pi=pinfo(c.id);return (c.to||null)===(pi.inj||null)||c.pr});
   chg.forEach(function(c){var m=mine[c.id];if(!m)return;items.push({kind:'inj',id:c.id,at:c.at,t:c.to?'Now '+c.to+(c.b?' ('+c.b+')':''):c.pr?'Practice: '+c.pr:'Back to healthy (was '+c.from+')',bad:!!c.to&&c.to!=='Questionable'||c.to==='Questionable',m:m})});
   // current injury statuses (first visit has no diff): timestamp from Sleeper news_updated
   Object.keys(cur).forEach(function(id){var c=cur[id];if(!c.i)return;if(items.some(function(x){return x.id===id&&x.kind==='inj'}))return;var pr=D.proj[id],t=pr&&pr.pl&&pr.pl.news_updated||null;items.push({kind:'inj',id:id,at:t||0,t:c.i+(c.b?' ('+c.b+')':''),bad:true,m:mine[id],cur:true})});
@@ -219,7 +222,7 @@ function allNews(force){return Promise.all([ensure(),trending()]).then(function(
   var avail=[];Object.keys(TR.add).forEach(function(id){var lgs=D.leagues.filter(function(L){return !Object.keys(L.rosters).some(function(k){return (L.rosters[k].players||[]).indexOf(id)>=0})}).map(function(L){return L.name});if(lgs.length&&NEEDS.concat(['K','DEF']).indexOf(pos(id))>=0)avail.push({id:id,n:TR.add[id],lgs:lgs})});
   avail.sort(function(a,b){return b.n-a.n});return {items:items,avail:avail.slice(0,10)}})})}
 function curStatus(id){var pi=pinfo(id);if(isNaN(+id))return '';if(pi.inj)return ' <span class="pill r" title="'+esc(pi.stsrc||'Sleeper')+'">NOW: '+esc(String(pi.inj).toUpperCase())+'</span>';
-  return pi.stsrc&&/active/.test(pi.stsrc)?' <span class="pill g" title="'+esc(pi.stsrc)+'">NOW: ACTIVE ✅</span>':''}
+  return pi.active?' <span class="pill g" title="'+esc(pi.stsrc||'')+'">NOW: ACTIVE ✅</span>':''}
 function newsStamp(){return D.newsAt?'<div class="small muted" style="margin:-4px 0 6px">News updated '+ETTIME.format(new Date(D.newsAt))+' ET · statuses '+(D.statAt&&D.statAt.sleeper?ETTIME.format(new Date(D.statAt.sleeper))+' ET':'…')+'</div>':''}
 function newsRow(x){return '<div class="news"'+(x.old?' style="opacity:.5"':'')+'>'+head(x.id)+'<div style="flex:1;min-width:0"><div class="nt">'+pname(x.id)+curStatus(x.id)+' '+(x.old?'<span class="pill">OLDER</span> ':'')+(x.starter?'<span class="pill y">STARTER</span>':'')+(x.kind==='inj'?' <span class="pill '+(x.bad?'r':'g')+'">'+(x.cur?'INJURY':'STATUS CHANGE')+'</span>':x.kind==='trend'?' <span class="pill">TRENDING</span>':' <span class="pill">ESPN</span>')+'</div><div>'+esc(x.t)+'</div>'+(x.story?'<div class="small muted">'+esc(String(x.story).slice(0,220))+(String(x.story).length>220?'…':'')+'</div>':'')+'<div class="nm2">'+(x.at?tstr(x.at)+' · '+ago(x.at)+' · ':'')+esc((x.m&&x.m.lg||[]).join(', '))+(x.starter?' · starting in '+x.m.start.length:'')+'</div></div></div>'}
 function renderNews(el){if(!D.leagues.length){el.innerHTML='<div class="panel empty">No leagues.</div>';return}el.innerHTML='<section class="panel">'+spin('Checking the wire…')+'</section>';

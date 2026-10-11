@@ -17,7 +17,7 @@ function SC(u,ttl){var k='wh:sc:'+u;try{var c=JSON.parse(sessionStorage.getItem(
   return J(u).then(function(d){try{sessionStorage.setItem(k,JSON.stringify({at:Date.now(),d:d}))}catch(e){}return d})}
 var ELIG={QB:['QB'],RB:['RB'],WR:['WR'],TE:['TE'],K:['K'],DEF:['DEF'],FLEX:['RB','WR','TE'],WRRB_FLEX:['RB','WR'],REC_FLEX:['WR','TE'],SUPER_FLEX:['QB','RB','WR','TE'],IDP_FLEX:['DL','LB','DB'],DL:['DL'],LB:['LB'],DB:['DB']};
 var NONSTART={BN:1,IR:1,TAXI:1};
-var BAD_INJ={Out:'OUT',Doubtful:'DOUBTFUL',IR:'IR',PUP:'PUP',Sus:'SUSP',NA:'N/A',DNR:'DNR',COV:'COVID'};
+var BAD_INJ={Inactive:'INACTIVE',Out:'OUT',Doubtful:'DOUBTFUL',IR:'IR',PUP:'PUP',Sus:'SUSP',NA:'N/A',DNR:'DNR',COV:'COVID'};
 function phi(z){return Math.exp(-z*z/2)/2.5066282746}
 function Phi(z){var t=1/(1+0.2316419*Math.abs(z)),d=0.3989423*Math.exp(-z*z/2),p=d*t*(0.3193815+t*(-0.3565638+t*(1.781478+t*(-1.821256+t*1.330274))));return z>0?1-p:p}
 var ESPN_FIX={WSH:'WAS',LA:'LAR',JAC:'JAX'};
@@ -43,23 +43,32 @@ function loadPlayers(force){
   var c=playersCached();
   if(c&&!force&&Date.now()-c.at<(statusEvery()<=5*6e4?3*36e5:864e5))return Promise.resolve(c.p);
   if(_pl)return _pl;
-  _pl=J(SAPI+'/v1/players/nfl').then(function(all){var m={},want={QB:1,RB:1,WR:1,TE:1,K:1,DEF:1};
+  _pl=J(SAPI+'/v1/players/nfl?_='+Date.now()).then(function(all){var m={},want={QB:1,RB:1,WR:1,TE:1,K:1,DEF:1};
     for(var id in all){var p=all[id];var fp=(p.fantasy_positions&&p.fantasy_positions.length?p.fantasy_positions:[p.position]).filter(Boolean);
       if(!fp.some(function(x){return want[x]}))continue;if(!p.team&&!D.rostered[id]&&!(D.anyRostered&&D.anyRostered[id]))continue;
-      m[id]={n:p.position==='DEF'?(p.first_name+' '+p.last_name):(p.full_name||((p.first_name||'')+' '+(p.last_name||'')).trim()),p:fp,t:p.team||null,i:p.injury_status||null,b:p.injury_body_part||null,pr:p.practice_participation||null,e:p.espn_id||null,a:p.age||null,y:p.years_exp}}
+      m[id]={n:p.position==='DEF'?(p.first_name+' '+p.last_name):(p.full_name||((p.first_name||'')+' '+(p.last_name||'')).trim()),p:fp,t:p.team||null,i:p.injury_status||null,s:p.status||null,b:p.injury_body_part||null,pr:p.practice_participation||null,e:p.espn_id||null,a:p.age||null,y:p.years_exp}}
     var prev=playersCached();
     if(prev&&prev.p)LS.set('wh:players:prev',{at:prev.at,p:slimInj(prev.p)});
     if(!LS.set(PKEY,{at:Date.now(),p:m})){var r={};for(var k in D.rostered)if(m[k])r[k]=m[k];LS.set(PKEY,{at:Date.now(),p:r})}
-    all=null;_pl=null;return m}).catch(function(e){_pl=null;throw e});
+    all=null;_pl=null;D.pfAt=Date.now();return m}).catch(function(e){_pl=null;throw e});
   return _pl}
 function slimInj(p){var o={};for(var k in p)if(D.rostered[k])o[k]={i:p[k].i,pr:p[k].pr,t:p[k].t};return o}
 
+// Injury precedence (regression fix 12:50): a freshly fetched /v1/players/nfl is authoritative. A source without injury data = UNKNOWN, never "active".
+// ESPN game-day data may only ADD Out, or confirm Active for a Q/D player it explicitly lists as active. Never clear Out/IR/PUP/Sus/Inactive.
+var HARD_INJ={Out:1,IR:1,PUP:1,Sus:1,NA:1,DNR:1,COV:1,Inactive:1};
+function injOf(id,pl,db){var base;
+  if(D.pfAt&&db&&'i' in db)base=db.i||(db.s==='Inactive'?'Inactive':null);// authoritative fresh players file
+  else base=(pl&&pl.injury_status)||(db&&db.i)||(db&&db.s==='Inactive'?'Inactive':null)||null;// not fresh yet: only ADD, never clear
+  var ST=D.stat&&D.stat[id],src=D.pfAt&&db?'Sleeper players file':'Sleeper';
+  if(ST){if(ST.s==='Out'&&!HARD_INJ[base]){base='Out';src=ST.src}else if(ST.s===null&&(base==='Questionable'||base==='Doubtful')){base=null;src=ST.src}}
+  return {inj:base,src:src,active:!base&&(ST&&ST.s===null||(D.pfAt&&db&&db.s==='Active'))}}
 function pinfo(id){
   var pr=D.proj[id],pl=pr&&pr.pl,db=D.players&&D.players[id];
   if(isNaN(+id)){return {id:id,n:id+' D/ST',pos:'DEF',fp:['DEF'],team:id,inj:null}}
-  var ST=D.stat&&D.stat[id];
-  if(pl)return {id:id,n:((pl.first_name||'')+' '+(pl.last_name||'')).trim(),pos:pl.position,fp:pl.fantasy_positions||[pl.position],team:pr.team||pl.team||(db&&db.t),inj:ST?ST.s:(pl.injury_status||null),body:ST?ST.b:pl.injury_body_part,stsrc:ST&&ST.src};
-  if(db)return {id:id,n:db.n,pos:db.p[0],fp:db.p,team:db.t,inj:ST?ST.s:db.i,body:ST?ST.b:db.b,stsrc:ST&&ST.src};
+  var IJ=injOf(id,pl,db);
+  if(pl)return {id:id,n:((pl.first_name||'')+' '+(pl.last_name||'')).trim(),pos:pl.position,fp:pl.fantasy_positions||[pl.position],team:pr.team||pl.team||(db&&db.t),inj:IJ.inj,body:pl.injury_body_part||(db&&db.b),stsrc:IJ.src,active:IJ.active};
+  if(db)return {id:id,n:db.n,pos:db.p[0],fp:db.p,team:db.t,inj:IJ.inj,body:db.b,stsrc:IJ.src,active:IJ.active};
   return {id:id,n:'Player '+id,pos:'?',fp:[],team:null,inj:null,unknown:true}}
 function head(id,cls){var pi=pinfo(id);
   if(pi.pos==='DEF')return '<img class="hs def '+(cls||'')+'" loading="lazy" alt="" src="https://sleepercdn.com/images/team_logos/nfl/'+String(id).toLowerCase()+'.png">';
@@ -240,18 +249,17 @@ function espnInactives(){var now=Date.now(),ids=relevantIds(),byTeam={};Object.k
         mine.forEach(function(id){var db=D.players&&D.players[id],pi=pinfo(id),hit=(db&&db.e&&byE[db.e])||byN[normN(pi.n)];
           var at=hit&&hit.date?new Date(hit.date).getTime():now;
           var pr=D.proj[id],sAt=+(pr&&pr.pl&&pr.pl.news_updated)||0;
-          if(hit){var st=hit.status,isOff=official&&at>=+g.kick-4*36e5;if(isOff||at>sAt)NS[id]={s:/^out$/i.test(st)?'Out':st==='Active'?null:st,src:isOff?'ESPN inactives':'ESPN injuries',at:at}}
-          else if(official)NS[id]={s:null,src:'ESPN inactives (active)',at:now}})});
+          if(hit){var st=hit.status,isOff=official&&at>=+g.kick-4*36e5;if(/^out$/i.test(st)&&(isOff||at>sAt))NS[id]={s:'Out',src:isOff?'ESPN game-day inactives':'ESPN injuries',at:at};else if(st==='Active'&&at>sAt)NS[id]={s:null,src:'ESPN (listed active)',at:at}}})});
       D.statAt.espn=now;return 1}).catch(function(){return 0})})).then(function(r){D.stat=NS;D.statAt.espnN=r.reduce(function(a,b){return a+b},0);return D.statAt.espnN})}
 var _stBusy=null;
 function refreshStatus(manual){if(_stBusy)return _stBusy;
-  _stBusy=loadProj().then(function(){return espnInactives()}).then(function(){_stBusy=null;D.M=null;D.at=D.at||Date.now();if(D.leagues.length)rerender();if(window.NEWS&&NEWS.reload&&NEWS.items)NEWS.reload(!!manual)},function(e){_stBusy=null;console.warn('status',e)});return _stBusy}
+  _stBusy=Promise.all([loadProj(),(manual||Date.now()-(D.pfAt||0)>=Math.max(5*6e4,statusEvery()))?loadPlayers(true).then(function(p){D.players=p}).catch(function(e){console.warn('players',e)}):null]).then(function(){return espnInactives()}).then(function(){_stBusy=null;D.M=null;D.at=D.at||Date.now();if(D.leagues.length)rerender();if(window.NEWS&&NEWS.reload&&NEWS.items)NEWS.reload(!!manual)},function(e){_stBusy=null;console.warn('status',e)});return _stBusy}
 function nextKick(){var n=null;Object.keys(D.games||{}).forEach(function(k){var g=D.games[k];if(g.state==='pre'&&(!n||g.kick<n))n=+g.kick});return n}
 function statusEvery(){var nk=nextKick(),now=Date.now();if(nk&&nk-now<=90*6e4)return 6e4;var d=new Date().getDay();return (d===0||d===1||d===4||isWindow())?5*6e4:30*6e4}
 var _stT=null;function statusLoop(){clearTimeout(_stT);_stT=setTimeout(function(){if(!document.hidden&&Date.now()-(D.statAt.sleeper||0)>=statusEvery()-2000)refreshStatus().then(statusLoop,statusLoop);else statusLoop()},15000)}
 document.addEventListener('visibilitychange',function(){if(!document.hidden&&D.leagues&&D.leagues.length&&Date.now()-(D.statAt.sleeper||0)>6e4)refreshStatus()});
 function stampHTML(){var a=D.statAt||{},t=a.sleeper;if(!t)return '';var nk=nextKick(),old=Date.now()-t>10*6e4&&nk&&nk-Date.now()<90*6e4;
-  return '<div class="small" style="margin-top:4px;color:'+(old?'var(--warn,#ffb020)':'var(--mute)')+'">'+(old?'⚠️ ':'')+'Statuses updated '+ETTIME.format(new Date(t))+' ET · Sleeper'+(a.espnN?' + ESPN game-day inactives ('+a.espnN+' game'+(a.espnN>1?'s':'')+')':'')+' · <button class="chip" data-strefresh style="height:24px;font-size:11px;padding:0 8px">↻ Refresh statuses</button></div>'}
+  return '<div class="small" style="margin-top:4px;color:'+(old?'var(--warn,#ffb020)':'var(--mute)')+'">'+(old?'⚠️ ':'')+'Statuses updated '+ETTIME.format(new Date(t))+' ET · Sleeper'+(D.pfAt?' (players file '+ETTIME.format(new Date(D.pfAt))+')':' (players file loading…)')+(a.espnN?' + ESPN game-day inactives ('+a.espnN+' game'+(a.espnN>1?'s':'')+')':'')+' · <button class="chip" data-strefresh style="height:24px;font-size:11px;padding:0 8px">↻ Refresh statuses</button></div>'}
 // ---------------- Start/Sit Calls: optimal lineup over unlocked players ----------------
 function hungarian(a){// min-cost assignment, rows<=cols; returns col index per row
   var n=a.length,m=a[0].length,INF=1e18,u=new Array(n+1).fill(0),v=new Array(m+1).fill(0),p=new Array(m+1).fill(0),way=new Array(m+1).fill(0);
@@ -260,7 +268,7 @@ function hungarian(a){// min-cost assignment, rows<=cols; returns col index per 
       for(j=0;j<=m;j++){if(used[j]){u[p[j]]+=delta;v[j]-=delta}else minv[j]-=delta}j0=j1}while(p[j0]!==0);
     do{var jj=way[j0];p[j0]=p[jj];j0=jj}while(j0)}
   var r=new Array(n).fill(-1);for(var j=1;j<=m;j++)if(p[j])r[p[j]-1]=j-1;return r}
-var INJ_ZERO={Out:1,IR:1,PUP:1,Sus:1,NA:1,DNR:1,COV:1};
+var INJ_ZERO={Inactive:1,Out:1,IR:1,PUP:1,Sus:1,NA:1,DNR:1,COV:1};
 var SSR=['{X} over {Y}. The Weasel has done the math, and the math is rude to {Y}.','Start {X}. Benching {Y} is not personal. It is, a little.','{X} in, {Y} out. If this goes wrong, blame the projections. Loudly.','{Y} had a nice run. Sit him. {X} is the play.'];
 function startSitCalls(L){var r=L.rosters[L.me],m=L.mu.filter(function(x){return x.roster_id===L.me})[0];if(!m||!r)return null;
   var now=Date.now(),starters=(m.starters||[]).slice(),excl={};(r.reserve||[]).forEach(function(x){excl[x]=1});(r.taxi||[]).forEach(function(x){excl[x]=1});
@@ -443,7 +451,7 @@ function boot(){
     $('#sub').innerHTML=esc(D.user.display_name.toUpperCase())+'<br>WEEK '+D.week;
     return Promise.all([loadLeagues(),loadProj(),loadGames()])}).then(function(){
     D.rostered={};D.anyRostered={};D.leagues.forEach(function(L){Object.keys(L.rosters).forEach(function(k){(L.rosters[k].players||[]).forEach(function(p){D.anyRostered[p]=1})})});D.leagues.forEach(function(L){Object.keys(L.rosters).forEach(function(k){var r=L.rosters[k];(r.players||[]).forEach(function(p){if(k==L.me)D.rostered[p]=1})});L.mu.forEach(function(m){(m.starters||[]).forEach(function(p){D.rostered[p]=1})})});
-    var c=playersCached();if(c)D.players=c.p;
+    var c=playersCached();if(c){D.players=c.p;if(Date.now()-c.at<10*6e4)D.pfAt=c.at}
     D.allLeagues=D.leagues;applyLg();lgChips();
     D.at=Date.now();rerender();schedule();refreshStatus();statusLoop();
     // background: fill names/injuries for players without projection rows, refresh daily
