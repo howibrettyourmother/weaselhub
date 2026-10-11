@@ -95,8 +95,8 @@ function slotOf(d){var parts=ETFMT.formatToParts(d),wd='',h=0;parts.forEach(func
   if(wd==='Mon')return 'mon';return 'oth'}
 var SLOTS=[['thu','Thursday'],['fri','Friday'],['sat','Saturday'],['sunam','Sun AM (Intl)'],['sun','Sunday'],['early','Sun Early'],['late','Sun Late'],['snf','Sun Night'],['mon','Monday'],['oth','Other'],['bye','Bye/None']];
 var SLOTNAME={};SLOTS.forEach(function(s){SLOTNAME[s[0]]=s[1]});
-function loadGames(){
-  return J('https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week='+D.week+'&seasontype=2&dates='+D.season).then(function(sb){
+function loadGames(bust){
+  return J('https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week='+D.week+'&seasontype=2&dates='+D.season+(bust?'&_='+Date.now():'')).then(function(sb){
     var g={},byes={};(sb.week&&sb.week.teamsOnBye||[]).forEach(function(t){byes[ESPN_FIX[t.abbreviation]||t.abbreviation]=1});
     (sb.events||[]).forEach(function(ev){var c=ev.competitions[0],st=c.status||ev.status,kick=new Date(ev.date);
       var state=st.type.state,per=st.period||0,clk=st.clock||0,frac=1;
@@ -121,7 +121,7 @@ function gmark(team){var g=gameOf(team);return g?gmk(g.state):''}
 function loadProj(){
   var u=SAPI+'/projections/nfl/'+D.season+'/'+D.week+'?season_type=regular&position[]=QB&position[]=RB&position[]=WR&position[]=TE&position[]=K&position[]=DEF';
   return (D.proj&&Object.keys(D.proj).length?J(u+'&_='+Date.now()):SC(u,5*6e4)).then(function(arr){try{sessionStorage.setItem('wh:sc:'+u,JSON.stringify({at:Date.now(),d:arr}))}catch(e){}D.statAt=D.statAt||{};D.statAt.sleeper=Date.now();var m={};arr.forEach(function(x){m[x.player_id]={s:x.stats||{},pl:x.player||{},team:x.team}});D.proj=m})
-    .catch(function(e){D.errors.push('Projections unavailable ('+e.message+').');D.proj={}})}
+    .catch(function(e){D.errors.push('Projections unavailable ('+e.message+').');if(!D.proj)D.proj={}})}
 function scoreStats(s,ss){var t=0;for(var k in ss){var w=ss[k];if(!w)continue;var v=s[k];
     if(v==null){if(k==='fgmiss'){v=(s.fgmiss_0_19||0)+(s.fgmiss_20_29||0)+(s.fgmiss_30_39||0)+(s.fgmiss_40_49||0)+(s.fgmiss_50p||0)}else continue}
     t+=v*w}return t}
@@ -150,7 +150,7 @@ function loadLeagues(){
       var om=L.mu.filter(function(m){return m.matchup_id===mm.matchup_id&&m.roster_id!==L.me})[0];
       if(!om){D.skipped.push({name:L.name,why:'no opponent this week'});return null}
       L.opp=om.roster_id;return L})}))}).then(function(arr){D.leagues=arr.filter(Boolean)})}
-function refreshMatchups(){return Promise.all((D.allLeagues||D.leagues).map(function(L){return S('/v1/league/'+L.id+'/matchups/'+D.week).then(function(m){if(m&&m.length)L.mu=m}).catch(function(){})}))}
+function refreshMatchups(bust){var ls=D.allLeagues||D.leagues,bad=0;return Promise.all(ls.map(function(L){return S('/v1/league/'+L.id+'/matchups/'+D.week+(bust?'?_='+Date.now():'')).then(function(m){if(m&&m.length)L.mu=m}).catch(function(){bad++})})).then(function(){if(bust&&ls.length&&bad===ls.length)throw new Error('Sleeper unreachable');return bad})}
 
 // ---------------- core model ----------------
 function playerLine(L,id,actualMap){
@@ -494,6 +494,21 @@ function boot(){
     if(missing||!c||Date.now()-c.at>(statusEvery()<=5*6e4?3*36e5:864e5))setTimeout(function(){loadPlayers().then(function(p){D.players=p;rerender()}).catch(function(e){console.warn('players',e)})},800);
     if(window.afterBoot)window.afterBoot.forEach(function(f){try{f()}catch(e){console.error(e)}});
   }).catch(function(e){console.error(e);$('#view').innerHTML='<div class="panel err">Could not load: '+esc(e.message)+'. <a href="javascript:location.reload()">Retry</a></div>'})}
-$('#refresh').onclick=function(){var b=this;b.disabled=true;try{sessionStorage.clear()}catch(e){}
-  Promise.all([liveRefresh().then(function(){return refreshStatus(true)})]).then(function(){b.disabled=false},function(){b.disabled=false})};
+// Header ↻ (and pull-to-refresh in standalone): force-refresh everything (games, matchups, projections/statuses, slim players, ESPN inactives, news,
+// live stats on the Live tab, tab data caches), bypassing caches; spinner while loading, then a toast. Double taps share one run.
+var _rfBusy=null;
+function toast(html,ms,err){var t=$('#toast');if(!t){t=document.createElement('div');t.id='toast';document.body.appendChild(t)}t.className=err?'err on':'on';t.innerHTML=html;clearTimeout(t._h);t._h=setTimeout(function(){t.className=''},ms||2200);return t}
+var _rfLast=0;function fullRefresh(){if(_rfBusy)return _rfBusy;if(Date.now()-_rfLast<1500)return Promise.resolve();_rfLast=Date.now();if(!D.leagues||!D.allLeagues){location.reload();return Promise.resolve()}var b=$('#refresh');b.classList.add('busy');b.setAttribute('aria-busy','true');
+  try{sessionStorage.clear()}catch(e){}if(window.resetTabCaches)try{resetTabCaches()}catch(e){}
+  var st=(_stBusy||Promise.resolve()).catch(function(){}).then(function(){return refreshStatus(true)});
+  _rfBusy=Promise.all([loadGames(true),refreshMatchups(true),st]).then(function(){return window.LIVE&&curTab()[0]==='live'?LIVE.poll():null})
+    .then(function(){D.M=null;D.at=Date.now();rerender();toast('✓ Updated '+ETTIME.format(new Date()).replace(/^\w+ /,''))},
+      function(e){console.warn('refresh',e);var t=toast('⚠️ Refresh failed: '+esc(e&&e.message||'network')+' <button class="chip" id="toastRetry">Retry</button>',8000,true);var r=t.querySelector('#toastRetry');if(r)r.onclick=function(){t.className='';_rfLast=0;fullRefresh()}})
+    .then(function(){_rfBusy=null;b.classList.remove('busy');b.removeAttribute('aria-busy')});return _rfBusy}
+$('#refresh').onclick=function(){fullRefresh()};
+(function(){var sa=window.navigator.standalone||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches);if(!sa)return;
+  var y0=null,ind=null,TH=80;function pull(dy){if(!ind){ind=document.createElement('div');ind.id='ptr';document.body.appendChild(ind)}ind.style.opacity=Math.min(1,dy/TH);ind.style.transform='translate(-50%,'+Math.min(dy,TH)*0.6+'px) rotate('+dy*3+'deg)';ind.className=dy>=TH?'go':''}
+  addEventListener('touchstart',function(e){y0=(scrollY<=0&&e.touches.length===1)?e.touches[0].clientY:null},{passive:true});
+  addEventListener('touchmove',function(e){if(y0==null)return;var dy=e.touches[0].clientY-y0;if(dy>8&&scrollY<=0)pull(dy);else if(ind)ind.style.opacity=0},{passive:true});
+  addEventListener('touchend',function(){if(ind&&ind.className==='go')fullRefresh();if(ind)ind.style.opacity=0;y0=null},{passive:true})})();
 boot();
