@@ -80,8 +80,15 @@ function strip(){return '<div class="lvs">'+D.leagues.map(function(L){var s=ST.s
 // "left" = projected points still to come: full projection for to-play, projection × fraction of game remaining for playing (same l.rem the win odds use).
 function wlSide(sd){var o={done:0,play:0,pre:0,rem:0};sd.lines.forEach(function(l){if(l.state==='in')o.play++;else if(l.state==='pre')o.pre++;else o.done++;o.rem+=l.rem});return o}
 function wlTxt(lab,o,cls){return '<div class="wls '+cls+'"><span class="wlk">'+lab+'</span> '+(o.play?'<i class="gl"></i>'+o.play+' playing · ':'')+(o.pre?o.pre+' to play · ':'')+(!o.play&&!o.pre?'all done · ':'')+'<b>~'+f1(o.rem)+'</b> left</div>'}
+function wlPl(l,kind){var pi=l.pi;return '<div class="wlp">'+head(l.id)+'<span class="wlpn">'+esc(pi.n)+' '+posChip(pi.pos)+'</span><span class="wlpm">'+
+  (kind==='in'?'<i class="gl"></i>'+esc(qcOf(l.g))+' · <b>'+f1(l.act)+'</b> · ~'+f1(l.rem)+' left':esc(l.g?ETTIME.format(l.g.kick):'')+' · '+f1(l.proj)+' proj')+'</span></div>'}
+function wlDetail(sd,lab,cls){var pl=sd.lines.filter(function(l){return l.state==='in'}).sort(function(a,b){return b.rem-a.rem}),pre=sd.lines.filter(function(l){return l.state==='pre'}).sort(function(a,b){return a.g.kick-b.g.kick||b.proj-a.proj}),dn=sd.lines.filter(function(l){return l.state!=='in'&&l.state!=='pre'});
+  return '<div class="wld"><div class="wlk '+cls+'">'+lab+'</div>'+(pl.length?'<div class="wlh">Playing now</div>'+pl.map(function(l){return wlPl(l,'in')}).join(''):'')+(pre.length?'<div class="wlh">To play</div>'+pre.map(function(l){return wlPl(l,'pre')}).join(''):'')+
+    (dn.length?'<div class="wlh wldn">Done: '+dn.map(function(l){return esc(l.pi.n.split(' ').slice(-1)[0])+' '+f1(l.act)}).join(' · ')+'</div>':'')+'</div>'}
+var WLO={};
 function whoLeft(){return D.leagues.map(function(L){var c=(D.M&&D.M.cards||[]).filter(function(x){return x.L.id===L.id})[0];if(!c)return '';
-  return '<div class="wl"><div class="wln">'+esc(L.name)+'</div><div class="wlg">'+wlTxt('you',wlSide(c.me),'for')+wlTxt('them',wlSide(c.op),'ag')+'</div>'+(lateMath(c)||'')+'</div>'}).join('')}
+  return '<details class="wl" data-wl="'+L.id+'"'+(WLO[L.id]?' open':'')+'><summary><div class="wln">'+esc(L.name)+' <span class="wlx">▾</span></div><div class="wlg">'+wlTxt('you',wlSide(c.me),'for')+wlTxt('them',wlSide(c.op),'ag')+'</div>'+(lateMath(c)||'')+'</summary>'+
+    (WLO[L.id]?wlDetail(c.me,'You','for')+wlDetail(c.op,esc(ownerOf(L,L.opp).name),'ag'):'')+'</details>'}).join('')}
 function tracker(){var mine={};D.leagues.forEach(function(L){var S=sides(L);[['me',S.me],['op',S.op]].forEach(function(z){if(z[1])(z[1].starters||[]).forEach(function(id){if(!id||id==='0')return;var t=pinfo(id).team,g=gameOf(t);if(!g)return;var o=mine[g.id]=mine[g.id]||{g:g,me:{},op:{}};o[z[0]][pinfo(id).pos==='DEF'?t+' D/ST':pinfo(id).n.split(' ').slice(-1)[0]]=1})})});
   var gs=Object.keys(mine).map(function(k){return mine[k]});if(!gs.length)return '';
   function tm(g){return g.teams.slice().sort(function(a,b){return (a.ha==='away'?0:1)-(b.ha==='away'?0:1)})}
@@ -122,6 +129,7 @@ function render(el,soft){load();if(!D.M)D.M=computeAll();var al=ST.alert&&Date.n
   el.innerHTML=html;
   if(soft&&lastSeen)$$('.lve[data-at]',el).forEach(function(r){if(+r.getAttribute('data-at')>lastSeen)r.classList.add('new')});lastSeen=Math.max(lastSeen,ST.ev.length?ST.ev[0].at:0);
   $$('[data-lk]',el).forEach(function(b){b.onclick=function(){UIL[b.getAttribute('data-lk')]=b.getAttribute('data-lv');render(el)}});
+  $$('details[data-wl]',el).forEach(function(d){d.addEventListener('toggle',function(){var id=d.getAttribute('data-wl');if(d.open===!!WLO[id])return;WLO[id]=d.open;if(d.open&&!d.querySelector('.wld')){var L=D.leagues.filter(function(x){return x.id===id})[0],c=(D.M.cards||[]).filter(function(x){return x.L.id===id})[0];if(L&&c)d.insertAdjacentHTML('beforeend',wlDetail(c.me,'You','for')+wlDetail(c.op,esc(ownerOf(L,L.opp).name),'ag'))}})});
   var mb=$('[data-more]',el);if(mb)mb.onclick=function(){UIL.more+=15;render(el)};var tb=$('[data-td]',el);if(tb)tb.onclick=function(){UIL.td=!UIL.td;render(el)};var bb=$('[data-big]',el);if(bb)bb.onclick=function(){UIL.big=!UIL.big;render(el)};var vb=$('[data-vib]',el);if(vb)vb.onclick=function(){LS.set('wh:live:vib',!VIB());render(el)};
   $$('[data-vt]',el).forEach(function(v){v.onclick=function(){v.textContent=v.getAttribute('data-vt');v.className='vr on'}});
   var pb=$('[data-poll]',el);if(pb)pb.onclick=function(){pb.textContent='Polling…';poll()}}
