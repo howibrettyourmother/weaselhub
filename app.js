@@ -226,11 +226,11 @@ function computeAll(){
       A.odds=od.pA;B.odds=1-od.pA;A.vs=B;B.vs=A;
       var dA=(stake[A.rid]||0)-(stake[B.rid]||0);if(Math.abs(dA)<1e-9)return;
       [[A,dA],[B,-dA]].forEach(function(z){var side=z[0],d=z[1];side.lines.forEach(function(l){
-        var imp=d*l.rem*od.lev,base=d*l.proj*o0.lev;
+        var imp=d*l.rem*od.lev,base=d*l.proj*o0.lev,st=stackOf(l,side.vs);if(st){imp*=st.f;base*=st.f}
         var who=side.rid===L.me?'me':side.vs.rid===L.me?'opp':(stake[side.rid]?((why[side.rid]||[]).join().indexOf('🎯')>=0?'pick':'rival'):((why[side.vs.rid]||[]).join().indexOf('🎯')>=0?'pickopp':'rivalopp'));
-        var tag=who==='me'?'Your starter':who==='opp'?'Starts vs you ('+ownerOf(L,side.rid).name+')'+(why[side.rid]?' + '+why[side.rid].join(', '):''):(who==='pick'||who==='rival')?ownerOf(L,side.rid).name+': '+(why[side.rid]||[]).join(', '):'Facing '+ownerOf(L,side.vs.rid).name+' ('+(why[side.vs.rid]||[]).join(', ')+')';
+        var tag=(who==='me'?'Your starter':who==='opp'?'Starts vs you ('+ownerOf(L,side.rid).name+')'+(why[side.rid]?' + '+why[side.rid].join(', '):''):(who==='pick'||who==='rival')?ownerOf(L,side.rid).name+': '+(why[side.rid]||[]).join(', '):'Facing '+ownerOf(L,side.vs.rid).name+' ('+(why[side.vs.rid]||[]).join(', ')+')')+(st?' · offset ×'+st.f+': '+(side.vs.rid===L.me?'you start ':'they start ')+st.n:'');
         var P=players[l.id]=players[l.id]||{id:l.id,line:l,ent:[],net:0,netBase:0};
-        P.ent.push({L:L,imp:imp,base:base,who:who,tag:tag,proj:l.proj,act:l.act,state:l.state,winp:side.rid===L.me?side.odds:null});
+        P.ent.push({L:L,imp:imp,base:base,who:who,tag:tag,proj:l.proj,rem:l.rem,act:l.act,state:l.state,winp:side.rid===L.me?side.odds:null,m:side.rid===L.me?side.fin-side.vs.fin:side.vs.fin-side.fin,cl:od.lev>0?phi(od.m/od.sig)/phi(0):0});
         P.net+=imp;P.netBase+=base;if(l.state==='in')P.line=l})})});
     var stt=standings(L);(H2H_ONLY?[]:pw).forEach(function(p){var x=stt[p.rid];if(!x||!x.wk.lines||!p.spp)return;var k=MPF_K*p.w*x.pNon*p.spp;if(k<1e-6)return;
       Object.keys(x.wk.lines).forEach(function(id){var l=x.wk.lines[id],wOpt=x.wk.set[id]?1:0.35,imp=-k*wOpt*l.rem,base=-k*wOpt*l.proj;if(Math.abs(base)<1e-4)return;
@@ -245,6 +245,13 @@ function computeAll(){
     var any=P.ent.some(function(e){return e.state==='pre'||e.state==='in'});P.done=!any;
     P.key=P.done?P.netBase:P.net;return P});
   return {players:list,cards:cards,flags:flags,picks:picks}}
+// same-NFL-team correlation (QB <-> pass-catcher stacks across the two sides of a matchup): a Gibbs TD catch also feeds your Goff,
+// so rooting against Gibbs is partly offset. Light, fixed factors: RB x0.8, WR/TE x0.6 when the other side starts their QB; QB x0.75 when the other side starts his pass-catchers.
+var STACK_F={RB:0.8,WR:0.6,TE:0.6};
+function stackOf(l,other){if(!other||!l.pi||!l.pi.team)return null;var p=l.pi.pos,best=null;
+  other.lines.forEach(function(o){if(!o.pi||o.pi.team!==l.pi.team||o.id===l.id)return;var f=null;if(p==='QB'&&STACK_F[o.pi.pos])f=0.75;else if(STACK_F[p]&&o.pi.pos==='QB')f=STACK_F[p];
+    if(f&&(!best||f<best.f))best={f:f,n:o.pi.n}});return best}
+function projRange(P){var a=P.ent.map(function(e){return e.proj}),lo=Math.min.apply(null,a),hi=Math.max.apply(null,a);return hi-lo>=0.5?f1(lo)+'–'+f1(hi):f1(hi)}
 function label(x){x=Math.abs(x);return x>=0.30?'Huge':x>=0.15?'Big':x>=0.06?'Moderate':'Small'}
 
 // ---------------- start/sit check ----------------
@@ -338,10 +345,10 @@ function gameTag(l){if(!l.g)return '<span class="tag">BYE</span>';if(l.state==='
 function oppStr(l){if(!l.g)return '';var me=l.pi.team,o=l.g.teams.filter(function(t){return t.ab!==me})[0],h=l.g.teams.filter(function(t){return t.ab===me})[0];return o?((h&&h.ha==='home')?'vs ':'@ ')+o.ab:''}
 function rowHTML(P,side,max){var l=P.line,pi=l.pi,v=P.key,w=Math.max(4,Math.round(Math.abs(v)/max*100));
   var ents=P.ent.slice().sort(function(a,b){return Math.abs(b.base)-Math.abs(a.base)});
-  var tags=(P.conf?'<span class="tag cf">CONFLICT</span>':'')+(P.ent.some(function(e){return e.who==='pick'})?'<span class="tag">🎯 pick</span>':'')+(P.ent.some(function(e){return e.who==='rival'})?'<span class="tag">👀 rival</span>':'');
+  var tags=(P.conf?'<span class="tag cf">CONFLICT</span>':'')+(P.ent.some(function(e){return e.who==='pick'})?'<span class="tag">🎯 pick</span>':'')+(P.ent.some(function(e){return e.who==='rival'})?'<span class="tag">👀 rival</span>':'')+(P.ent.some(function(e){return /offset ×/.test(e.tag)})?'<span class="tag">🔗 stack offset</span>':'');
   var live=l.state!=='pre'&&l.g?' · <b>'+f1(P.ent[0].act)+'</b> pts':'';
-  return '<details class="row '+(P.done?'done':'')+'" data-k="r'+P.id+'"'+(UI.open['r'+P.id]?' open':'')+'><summary>'+head(P.id)+'<div class="mid"><div class="pn">'+esc(pi.n)+' '+(pi.inj?'<span class="inj">'+esc(pi.inj.toUpperCase().slice(0,4))+'</span>':'')+'</div><div class="meta">'+posChip(pi.pos)+'<span>'+esc(pi.team||'FA')+' '+esc(oppStr(l))+'</span>'+gameTag(l)+'<span class="lgs">'+P.nL+' league'+(P.nL>1?'s':'')+'</span>'+tags+'</div></div><div class="imp"><div class="lbl">'+(P.done?'Done':label(v))+'</div><div class="ibar"><i style="width:'+w+'%"></i></div><div class="pp">'+f1(l.proj)+' proj'+live+'</div></div></summary><div class="det">'+
-    ents.map(function(e){var sg=(P.done?e.base:e.imp);return '<div><span><b>'+esc(e.L.name)+'</b> · '+esc(e.tag)+'</span><span class="'+(sg>=0?'pe':'ne')+'">'+(sg>=0?'+':'−')+f1(Math.abs(sg)*100)+'% swing</span></div>'}).join('')+'</div></details>'}
+  return '<details class="row '+(P.done?'done':'')+'" data-k="r'+P.id+'"'+(UI.open['r'+P.id]?' open':'')+'><summary>'+head(P.id)+'<div class="mid"><div class="pn">'+esc(pi.n)+' '+(pi.inj?'<span class="inj">'+esc(pi.inj.toUpperCase().slice(0,4))+'</span>':'')+'</div><div class="meta">'+posChip(pi.pos)+'<span>'+esc(pi.team||'FA')+' '+esc(oppStr(l))+'</span>'+gameTag(l)+'<span class="lgs">'+P.nL+' league'+(P.nL>1?'s':'')+'</span>'+tags+'</div></div><div class="imp"><div class="lbl">'+(P.done?'Done':label(v)+' <small class="ipct">'+Math.round(Math.abs(v)*100)+'%</small>')+'</div><div class="ibar"><i style="width:'+w+'%"></i></div><div class="pp">'+projRange(P)+' proj'+live+'</div></div></summary><div class="det">'+
+    '<div class="small muted" style="margin-bottom:4px">Impact = win-odds swing if he scores his projection vs zero: points still to come × how close the matchup is (closeness 1.0 = coin flip, ~0.3 = blowout). Huge ≥30% total, Big ≥15%, Moderate ≥6%.</div>'+ents.map(function(e){var sg=(P.done?e.base:e.imp);return '<div><span><b>'+esc(e.L.name)+'</b> · '+esc(e.tag)+(e.m!=null&&!P.done?'<br><span class="muted small">'+f1(e.rem!=null?e.rem:e.proj)+' pts to come · your proj margin '+(e.m>=0?'+':'−')+f1(Math.abs(e.m))+' · closeness ×'+e.cl.toFixed(2)+(e.cl>=0.8?' (close)':e.cl<0.45?' (blowout)':'')+'</span>':'')+'</span><span class="'+(sg>=0?'pe':'ne')+'">'+(sg>=0?'+':'−')+f1(Math.abs(sg)*100)+'% swing</span></div>'}).join('')+'</div></details>'}
 // remember start/sit calls made before lock so the weekly report card can say whether they were followed
 function logCalls(R){if(!R||!R.L)return;var L=R.L,k='wh:calls:'+D.season+':'+D.week+':'+L.id,o=LS.get(k)||{},m=L.mu.filter(function(x){return x.roster_id===L.me})[0],st=(m&&m.starters)||[],now=Date.now(),ch=false,cur={};
   (R.calls||[]).forEach(function(c){if(!c.y)return;var key=c.x.id+'>'+c.y.id;cur[key]=1;var e=o[key];if(!e||e.g!==+c.gain.toFixed(1)||e.lvl!==c.lvl){o[key]={x:c.x.id,y:c.y.id,lvl:c.lvl,g:+c.gain.toFixed(1),at:now};ch=true}});
