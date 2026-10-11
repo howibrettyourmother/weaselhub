@@ -39,28 +39,39 @@ function lgChips(){var el=$('#lgf');if(!el||!D.allLeagues||D.allLeagues.length<2
 var PKEY='wh:players:v1';
 function playersCached(){var c=LS.get(PKEY);return c&&c.p?c:null}
 var _pl=null;
-function loadPlayers(force){
-  var c=playersCached();
-  if(c&&!force&&Date.now()-c.at<(statusEvery()<=5*6e4?3*36e5:864e5))return Promise.resolve(c.p);
-  if(_pl)return _pl;
-  _pl=J(SAPI+'/v1/players/nfl?_='+Date.now()).then(function(all){var m={},want={QB:1,RB:1,WR:1,TE:1,K:1,DEF:1};
+// Players file: prefer the slim data/players.json (built by a GitHub Action every 30-60 min, ~19 KB gz) over Sleeper's 14 MB file.
+// If the slim file is missing, broken or older than SLIM_MAX, fall back to Sleeper direct, so an Action outage can't go stale silently.
+// Fresh injury_status comes from Sleeper's projections feed (refetched every 60s near kickoff); see injOf.
+var SLIM_URL='data/players.json';function SLIM_MAX(){return statusEvery()<=5*6e4?75*6e4:3*36e5}
+function fullPlayers(){return J(SAPI+'/v1/players/nfl?_='+Date.now()).then(function(all){var m={},want={QB:1,RB:1,WR:1,TE:1,K:1,DEF:1};
     for(var id in all){var p=all[id];var fp=(p.fantasy_positions&&p.fantasy_positions.length?p.fantasy_positions:[p.position]).filter(Boolean);
       if(!fp.some(function(x){return want[x]}))continue;if(!p.team&&!D.rostered[id]&&!(D.anyRostered&&D.anyRostered[id]))continue;
       m[id]={n:p.position==='DEF'?(p.first_name+' '+p.last_name):(p.full_name||((p.first_name||'')+' '+(p.last_name||'')).trim()),p:fp,t:p.team||null,i:p.injury_status||null,s:p.status||null,b:p.injury_body_part||null,pr:p.practice_participation||null,e:p.espn_id||null,a:p.age||null,y:p.years_exp}}
+    all=null;return {gen:Date.now(),p:m,src:'Sleeper direct'}})}
+function slimPlayers(){return J(SLIM_URL+'?_='+Math.floor(Date.now()/3e4)).then(function(d){if(!d||!d.p||!d.at)throw new Error('slim file unreadable');var age=Date.now()-d.at;
+  if(age>SLIM_MAX())throw new Error('slim file '+Math.round(age/6e4)+' min old');var miss=Object.keys(D.rostered||{}).filter(function(id){return !isNaN(+id)&&!d.p[id]&&!(D.proj&&D.proj[id])}).length;if(miss>3)throw new Error(miss+' rostered players missing from slim file');return {gen:d.at,p:d.p,src:'slim'}})}
+function loadPlayers(force,full){
+  var c=playersCached();
+  if(c&&!force&&Date.now()-c.at<(statusEvery()<=5*6e4?3*36e5:864e5))return Promise.resolve(c.p);
+  if(_pl)return _pl;
+  _pl=(full?fullPlayers():slimPlayers().catch(function(e){console.info('players: slim file not used ('+e.message+'); falling back to Sleeper direct');D.pfFallback=e.message;return fullPlayers()})).then(function(r){var m=r.p;
     var prev=playersCached();
-    if(prev&&prev.p)LS.set('wh:players:prev',{at:prev.at,p:slimInj(prev.p)});
-    if(!LS.set(PKEY,{at:Date.now(),p:m})){var r={};for(var k in D.rostered)if(m[k])r[k]=m[k];LS.set(PKEY,{at:Date.now(),p:r})}
-    all=null;_pl=null;D.pfAt=Date.now();return m}).catch(function(e){_pl=null;throw e});
+    if(prev&&prev.p&&prev.gen!==r.gen)LS.set('wh:players:prev',{at:prev.at,p:slimInj(prev.p)});
+    if(!LS.set(PKEY,{at:Date.now(),gen:r.gen,src:r.src,p:m})){var o={};for(var k in D.rostered)if(m[k])o[k]=m[k];LS.set(PKEY,{at:Date.now(),gen:r.gen,src:r.src,p:o})}
+    _pl=null;D.pfAt=r.gen;D.pfSrc=r.src;return m}).catch(function(e){_pl=null;throw e});
   return _pl}
 function slimInj(p){var o={};for(var k in p)if(D.rostered[k])o[k]={i:p[k].i,pr:p[k].pr,t:p[k].t};return o}
 
 // Injury precedence (regression fix 12:50): a freshly fetched /v1/players/nfl is authoritative. A source without injury data = UNKNOWN, never "active".
 // ESPN game-day data may only ADD Out, or confirm Active for a Q/D player it explicitly lists as active. Never clear Out/IR/PUP/Sus/Inactive.
 var HARD_INJ={Out:1,IR:1,PUP:1,Sus:1,NA:1,DNR:1,COV:1,Inactive:1};
-function injOf(id,pl,db){var base;
-  if(D.pfAt&&db&&'i' in db)base=db.i||(db.s==='Inactive'?'Inactive':null);// authoritative fresh players file
-  else base=(pl&&pl.injury_status)||(db&&db.i)||(db&&db.s==='Inactive'?'Inactive':null)||null;// not fresh yet: only ADD, never clear
-  var ST=D.stat&&D.stat[id],src=D.pfAt&&db?'Sleeper players file':'Sleeper';
+var LONG_OUT={IR:1,PUP:1,Sus:1,NA:1,DNR:1,COV:1};
+function injOf(id,pl,db){var base,src,live=D.statAt&&D.statAt.sleeper&&pl&&('injury_status' in pl),longDb=D.pfAt&&db&&(LONG_OUT[db.i]||db.s==='Inactive');
+  if(live){base=pl.injury_status||null;src='Sleeper live';// fresh Sleeper projections feed: carries injury_status explicitly (null = no designation)
+    if(!base&&longDb){base=db.i||'Inactive';src='Sleeper players file'}}// that feed has no roster status: never clear IR/PUP/Sus/Inactive from it
+  else if(D.pfAt&&db&&'i' in db){base=db.i||(db.s==='Inactive'?'Inactive':null);src='Sleeper players file'}// authoritative players file
+  else{base=(pl&&pl.injury_status)||(db&&db.i)||(db&&db.s==='Inactive'?'Inactive':null)||null;src='Sleeper'}// not fresh yet: only ADD, never clear
+  var ST=D.stat&&D.stat[id];
   if(ST){if(ST.s==='Out'&&!HARD_INJ[base]){base='Out';src=ST.src}else if(ST.s===null&&(base==='Questionable'||base==='Doubtful')){base=null;src=ST.src}}
   return {inj:base,src:src,active:!base&&(ST&&ST.s===null||(D.pfAt&&db&&db.s==='Active'))}}
 function pinfo(id){
@@ -261,7 +272,7 @@ function statusEvery(){var nk=nextKick(),now=Date.now();if(nk&&nk-now<=90*6e4)re
 var _stT=null;function statusLoop(){clearTimeout(_stT);_stT=setTimeout(function(){if(!document.hidden&&Date.now()-(D.statAt.sleeper||0)>=statusEvery()-2000)refreshStatus().then(statusLoop,statusLoop);else statusLoop()},15000)}
 document.addEventListener('visibilitychange',function(){if(!document.hidden&&D.leagues&&D.leagues.length&&Date.now()-(D.statAt.sleeper||0)>6e4)refreshStatus()});
 function stampHTML(){var a=D.statAt||{},t=a.sleeper;if(!t)return '';var nk=nextKick(),old=Date.now()-t>10*6e4&&nk&&nk-Date.now()<90*6e4;
-  return '<div class="small" style="margin-top:4px;color:'+(old?'var(--warn,#ffb020)':'var(--mute)')+'">'+(old?'⚠️ ':'')+'Statuses updated '+ETTIME.format(new Date(t))+' ET · Sleeper'+(D.pfAt?' (players file '+ETTIME.format(new Date(D.pfAt))+')':' (players file loading…)')+(a.espnN?' + ESPN game-day inactives ('+a.espnN+' game'+(a.espnN>1?'s':'')+')':'')+' · <button class="chip" data-strefresh style="height:24px;font-size:11px;padding:0 8px">↻ Refresh statuses</button></div>'}
+  return '<div class="small" style="margin-top:4px;color:'+(old?'var(--warn,#ffb020)':'var(--mute)')+'">'+(old?'⚠️ ':'')+'Statuses updated '+ETTIME.format(new Date(t))+' ET · Sleeper live'+(D.pfAt?' (players file '+ETTIME.format(new Date(D.pfAt))+(D.pfSrc==='slim'?' via Hub cache':D.pfSrc?' direct':'')+')':' (players file loading…)')+(a.espnN?' + ESPN game-day inactives ('+a.espnN+' game'+(a.espnN>1?'s':'')+')':'')+' · <button class="chip" data-strefresh style="height:24px;font-size:11px;padding:0 8px">↻ Refresh statuses</button></div>'}
 // ---------------- Start/Sit Calls: optimal lineup over unlocked players ----------------
 function hungarian(a){// min-cost assignment, rows<=cols; returns col index per row
   var n=a.length,m=a[0].length,INF=1e18,u=new Array(n+1).fill(0),v=new Array(m+1).fill(0),p=new Array(m+1).fill(0),way=new Array(m+1).fill(0);
@@ -453,7 +464,7 @@ function boot(){
     $('#sub').innerHTML=esc(D.user.display_name.toUpperCase())+'<br>WEEK '+D.week;
     return Promise.all([loadLeagues(),loadProj(),loadGames()])}).then(function(){
     D.rostered={};D.anyRostered={};D.leagues.forEach(function(L){Object.keys(L.rosters).forEach(function(k){(L.rosters[k].players||[]).forEach(function(p){D.anyRostered[p]=1})})});D.leagues.forEach(function(L){Object.keys(L.rosters).forEach(function(k){var r=L.rosters[k];(r.players||[]).forEach(function(p){if(k==L.me)D.rostered[p]=1})});L.mu.forEach(function(m){(m.starters||[]).forEach(function(p){D.rostered[p]=1})})});
-    var c=playersCached();if(c){D.players=c.p;if(Date.now()-c.at<10*6e4)D.pfAt=c.at}
+    var c=playersCached();if(c){D.players=c.p;if(Date.now()-c.at<10*6e4){D.pfAt=c.gen||c.at;D.pfSrc=c.src}}
     D.allLeagues=D.leagues;applyLg();lgChips();
     D.at=Date.now();rerender();schedule();refreshStatus();statusLoop();
     // background: fill names/injuries for players without projection rows, refresh daily

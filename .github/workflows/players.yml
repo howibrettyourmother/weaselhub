@@ -1,0 +1,21 @@
+name: slim players file
+on:
+  schedule:
+    - cron: '7,37 * * * 0,1,4,5'   # game days (UTC; covers Sun/Mon/Thu night ET): every 30 min
+    - cron: '17 * * * 2,3,6'       # other days: hourly
+  workflow_dispatch:
+concurrency: { group: slim-players, cancel-in-progress: false }
+permissions: { contents: write }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/slim_players.py
+      - name: commit
+        run: |
+          git config user.name 'weaselhub-bot'; git config user.email 'actions@users.noreply.github.com'
+          git add data/players.json
+          git commit -m 'data: slim players file [skip ci]' || exit 0
+          for i in 1 2 3; do git pull --rebase -q && git push -q && exit 0; sleep 5; done; exit 1
