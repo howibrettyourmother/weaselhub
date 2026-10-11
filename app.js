@@ -91,7 +91,7 @@ function loadGames(){
       var state=st.type.state,per=st.period||0,clk=st.clock||0,frac=1;
       if(state==='in'){var el=per<=4?((per-1)*900+(900-clk))/3600:0.985;frac=Math.max(0.015,Math.min(1,1-el))}else if(state==='post')frac=0;
       var tms=c.competitors.map(function(x){return {ab:ESPN_FIX[x.team.abbreviation]||x.team.abbreviation,tid:x.team.id,score:+x.score||0,ha:x.homeAway}});
-      var od=(c.odds&&c.odds[0])||{},sit=c.situation||{};var info={rz:!!sit.isRedZone,poss:sit.possession||null,id:ev.id,kick:kick,slot:slotOf(kick),state:state,frac:frac,detail:st.type.shortDetail,teams:tms,name:ev.shortName,ou:+od.overUnder||null,line:od.details||null};
+      var od=(c.odds&&c.odds[0])||{},sit=c.situation||{};var info={rz:!!(sit.isRedZone&&sit.possession&&sit.downDistanceText),dd:sit.possession?sit.downDistanceText||null:null,poss:sit.possession||null,id:ev.id,kick:kick,slot:slotOf(kick),state:state,frac:frac,detail:st.type.shortDetail,teams:tms,name:ev.shortName,ou:+od.overUnder||null,line:od.details||null};
       tms.forEach(function(t){g[t.ab]=info})});
     D.games=g;D.byes=byes;D.gamesOk=true;D.gamesSrc='ESPN'}).catch(function(e){
     // fallback: Sleeper schedule (dates + status only, no kickoff times)
