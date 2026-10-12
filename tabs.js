@@ -203,7 +203,12 @@ var RC_ROAST={A:["Straight A's. The Weasel would like to formally request your l
 function letter(s){return s>=90?'A':s>=80?'B':s>=70?'C':s>=60?'D':'F'}
 function gradeChip(g){var c={A:'var(--for)',B:'#9be7ff',C:'var(--gold)',D:'#ff9f5a',F:'var(--ag)'}[g];return '<b style="font:700 22px/1 var(--disp);color:'+c+'">'+g+'</b>'}
 function reportCard(L,ms,me,op,act,opt,pts,w){var cl=function(x){return Math.max(0,Math.min(100,x))};
-  var eff=opt>0?act/opt*100:100,effS=cl((eff-70)*10/3),left=Math.max(0,opt-act),benchS=cl(100-left*2);
+  var eff=opt>0?act/opt*100:100,left=Math.max(0,opt-act);
+  // curve: half absolute, half league-relative (same week, same league). Typical lineups land B/C; F needs a bad lineup that's also near the league's worst.
+  var lg=ms.filter(function(m){return m.roster_id!==L.me&&(m.players||[]).length}).map(function(m){var o=optimal(L,L.slots,m.players||[],m.players_points||{}).tot,a=+m.points||0;return {e:o>0?a/o*100:100,l:Math.max(0,o-a)}});
+  var pct=function(arr,v,lowGood){if(!arr.length)return 0.5;return arr.reduce(function(s,x){return s+(lowGood?(x>v?1:x===v?0.5:0):(x<v?1:x===v?0.5:0))},0)/arr.length};
+  var pE=pct(lg.map(function(x){return x.e}),eff),pB=pct(lg.map(function(x){return x.l}),left,true),med=lg.length?lg.map(function(x){return x.e}).sort(function(a,b){return a-b})[lg.length>>1]:null;
+  var effS=0.5*cl(40+(eff-55)*1.375)+0.5*(55+45*pE),benchS=0.5*cl(100-left*0.45)+0.5*(55+45*pB);
   var others=ms.filter(function(m){return m.roster_id!==L.me}),aw=others.filter(function(m){return (+m.points||0)<act}).length,al=others.filter(function(m){return (+m.points||0)>act}).length,ap=others.length?aw/others.length:0.5;
   var res=op?(act>op.points?'W':act<op.points?'L':'T'):'-',oppRank=op?ms.filter(function(m){return (+m.points||0)>(+op.points||0)}).length+1:null;
   var luck=res==='W'&&ap<0.5?{t:'🍀 Lucky',c:'var(--gold)',d:'won with a '+aw+'-'+al+' all-play'}:res==='L'&&ap>0.5?{t:'🌧️ Unlucky',c:'#9be7ff',d:'lost despite a '+aw+'-'+al+' all-play'+(oppRank===1?' (ran into the week\'s top score)':oppRank<=2?' (opponent scored #'+oppRank+')':'')}:{t:'⚖️ Earned it',c:'var(--mute)',d:aw+'-'+al+' all-play'+(oppRank?' · opponent #'+oppRank+' of '+ms.length:'')};
@@ -213,7 +218,7 @@ function reportCard(L,ms,me,op,act,opt,pts,w){var cl=function(x){return Math.max
   var ro=RC_ROAST[G][(L.id.length+w)%RC_ROAST[G].length];
   function sub(lab,g,d){return '<div class="rcg"><span class="muted">'+lab+'</span> <b>'+g+'</b> <span class="small muted">'+d+'</span></div>'}
   return '<div class="rc"><div class="rch">'+gradeChip(G)+'<span class="small muted">WEEK '+w+' REPORT CARD</span></div>'+
-    sub('Lineup',letter(effS),f1(eff)+'% of optimal')+sub('Bench',letter(benchS),f1(left)+' pts left')+
+    sub('Lineup',letter(effS),f1(eff)+'% of optimal'+(med!=null?' · league median '+Math.round(med)+'% · beat '+Math.round(pE*lg.length)+' of '+lg.length:''))+sub('Bench',letter(benchS),f1(left)+' pts left')+
     sub('Calls',callS==null?'–':letter(callS),calls.length?fol.length+'/'+calls.length+' followed · '+(fol.length?'followed net '+(fol.reduce(function(a,c){return a+c.net},0)>=0?'+':'−')+f1(Math.abs(fol.reduce(function(a,c){return a+c.net},0))):'')+(ign.length?(fol.length?' · ':'')+'ignored would have '+(ign.reduce(function(a,c){return a+c.net},0)>=0?'gained ':'lost ')+f1(Math.abs(ign.reduce(function(a,c){return a+c.net},0))):''):'no calls logged on this device')+
     '<div class="rcg"><span class="muted">Luck</span> <b style="color:'+luck.c+'">'+luck.t+'</b> <span class="small muted">'+luck.d+' (not graded)</span></div><div class="roast">'+esc(ro)+'</div></div>'}
 function renderRecap(el){var w=+(QS.get('rw')||0)||(D.games&&Object.keys(D.games).length&&Object.keys(D.games).every(function(k){return D.games[k].state==='post'})?D.week:D.week-1);

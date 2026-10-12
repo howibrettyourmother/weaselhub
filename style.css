@@ -149,3 +149,4 @@ details.wl>summary{list-style:none;cursor:pointer}details.wl>summary::-webkit-de
 .pwc .pe{color:var(--for)}.pwc .ne{color:var(--ag)}
 .pwf{font:600 10px/1 inherit;letter-spacing:.06em;color:var(--muted,#9aa);border:1px solid rgba(255,255,255,.2);border-radius:4px;padding:2px 4px;vertical-align:middle;margin-left:4px}
 .lvc.fin{opacity:.75}
+.rl{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(255,255,255,.05)}.rl .ic,.rl img{flex:0 0 auto}.rlk{font:700 11px/1 inherit;width:30px;text-align:center}.rlw{text-align:right;flex:0 0 auto;line-height:1.1}.rl .fx{min-width:0;flex:1}
