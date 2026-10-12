@@ -188,7 +188,7 @@ var PWINFO='Rookie draft order = max PF (best possible lineup points, bench incl
 function pickPanel(){var cs=pwCards();if(!cs.length)return '';var sum=pwSummary(cs);
   return '<section class="panel"><details class="pwd"'+(PWO?' open':'')+'><summary><h2 style="margin:0">🎯 Pick Watch <small>'+cs.length+' TEAMS</small> <span class="pwx">▾</span></h2><div class="small" style="margin-top:4px">'+sum+'</div></summary>'+
     '<details class="inf"><summary class="small muted">ⓘ How this works</summary><div class="small muted">'+PWINFO+' Tap a card for the full Pick Watch.</div></details>'+
-    '<div class="pwg">'+cs.map(pwCard).join('')+'</div></details></section>'}
+    '<div class="pwg">'+cs.map(function(t){return pwCard(t)}).join('')+'</div></details></section>'}
 function evRow(e){if(e.kind==='start')return '<div class="lve sys small muted">⏺ '+esc(e.t)+' · '+ETTIME.format(new Date(e.at))+'</div>';
   if(e.kind==='swing')return '<div class="lve sys"><div class="small"><b style="color:'+(e.good?'var(--for)':'var(--ag)')+'">'+esc(e.t)+'</b> · '+ETTIME.format(new Date(e.at))+'</div>'+(e.roast?'<div class="small" style="color:var(--gold);font-style:italic">🦦 '+esc(e.roast)+'</div>':'')+'</div>';
   var pi=pinfo(e.id),legs=e.legs.filter(function(l){return shown(l.lid)}),groups={};
