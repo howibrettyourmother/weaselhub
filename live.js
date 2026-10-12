@@ -143,9 +143,49 @@ function tracker(){var mine={};D.leagues.forEach(function(L){var S=sides(L);[['m
   if(later.length)h+='<div class="lvl"><span class="ltm">LATER</span> '+later.map(function(o){var t=tm(o.g),nm=Object.keys(o.me).length,no=Object.keys(o.op).length;return '<span class="lvx">'+esc(t[0].ab)+' @ '+esc(t[1].ab)+' <span class="muted">'+(new Date(o.g.kick).toDateString()===new Date().toDateString()?ETTIME.format(o.g.kick).replace(/^\w+ /,''):ETTIME.format(o.g.kick))+'</span>'+(nm?' <span class="for">●'+nm+'</span>':'')+(no?' <span class="ag">●'+no+'</span>':'')+'</span>'}).join('')+'</div>';
   if(fin.length)h+='<details class="lvfin"><summary class="ltm">FINAL ('+fin.length+')</summary>'+fin.map(function(o){var t=tm(o.g);return '<div class="lvf">FINAL · '+esc(t[0].ab)+' '+t[0].score+' – '+esc(t[1].ab)+' '+t[1].score+' <span class="pcs">'+chips(o,true)+'</span></div>'}).join('')+'</details>';
   return h}
-function pickLive(){var rows=[];(D.M&&D.M.picks||[]).forEach(function(x){var p=x.p,st=p.st;if(!p.near||!st||!st.wk||!st.wk.lines)return;if(rows.some(function(r){return r.k===x.L.id+':'+p.rid}))return;var all=standings(x.L),avg=0,n=0;Object.keys(all).forEach(function(k){if(all[k].wk.lines){avg+=all[k].wk.tot;n++}});avg=n?avg/n:0;
-  rows.push({k:x.L.id+':'+p.rid,h:'<span class="'+(st.wk.tot<avg?'pe':'ne')+'">'+(st.wk.tot<avg?'▲':'▼')+'</span> '+esc(ownerOf(x.L,p.rid).name)+' '+f1(st.wk.act)+' banked / '+f1(st.wk.tot)+' proj vs avg '+f1(avg)+' · #'+st.slot+(st.slot0&&st.slot0!==st.slot?' (was #'+st.slot0+')':'')})});
-  return rows.length?'<div class="small" style="margin-top:6px"><b>🎯 Pick Watch live</b> (best-lineup pts; low is good)<br>'+rows.slice(0,5).map(function(r){return r.h}).join('<br>')+' <a href="#picks">→</a></div>':''}
+// ---------- Pick Watch live snapshot: one card per pick team (picks Brett owns from them), live matchup, projected pick then vs now ----------
+var PWO=LS.get('wh:live:pwo');if(PWO==null)PWO=true;
+function pwOrder(arr,pt,live){// max-PF draft order: non-playoff teams by lowest projected season-end max PF, then playoff teams by reverse finish
+  var desc=arr.slice().sort(function(a,b){return (b.W-a.W)||(b.PF-a.PF)});desc.forEach(function(x,i){x[live?'poN':'po0']=i<pt});
+  var ord=DRAFT_ORDER==='all'?arr.slice().sort(function(a,b){return a.M-b.M}):desc.filter(function(x,i){return i>=pt}).sort(function(a,b){return a.M-b.M}).concat(desc.slice(0,pt).reverse());
+  ord.forEach(function(x,i){x[live?'sN':'s0']=i+1})}
+function pwLeague(L){var st=standings(L),n=Object.keys(L.rosters).length,pt=(L.raw.settings||{}).playoff_teams||Math.floor(n/2),sides=L.sides||{};
+  var ks=Object.keys(st),live=ks.some(function(k){return st[k].wk&&st[k].wk.lines}),avg=0,na=0,avgB=0;
+  ks.forEach(function(k){var w=st[k].wk;if(w&&w.lines){avg+=w.tot;avgB+=w.act||0;na++}});avg=na?avg/na:0;avgB=na?avgB/na:0;
+  var mk=function(live){return ks.map(function(k){var x=st[k],s=sides[k],o=s&&s.vs,W=x.w+x.t/2,PF=x.pf;
+    if(live&&s&&o&&x.wk&&x.wk.lines){var done=s.ytp+s.live+o.ytp+o.live===0;W+=done?(s.act>o.act?1:s.act===o.act?0.5:0):(s.odds>=0.5?1:0);PF+=done?s.act:s.fin}
+    return {rid:+k,W:W,PF:PF,M:live?x.mpfEnd:x.mpfEnd0}})};
+  var a0=mk(false),aN=mk(true);pwOrder(a0,pt,false);pwOrder(aN,pt,true);var by={};a0.forEach(function(x){by[x.rid]={s0:x.s0,po0:x.po0}});aN.forEach(function(x){by[x.rid].sN=x.sN;by[x.rid].poN=x.poN});
+  return {st:st,by:by,avg:avg,avgB:avgB,n:n,pt:pt,live:live}}
+function pad2(n){return (n<10?'0':'')+n}
+function pwCards(){var M=D.M||{},teams={},lc={};(M.picks||[]).forEach(function(x){var L=x.L,k=L.id+':'+x.p.rid;if(!lc[L.id])lc[L.id]=pwLeague(L);
+    var t=teams[k]=teams[k]||{k:k,L:L,rid:x.p.rid,side:x.side,opp:x.opp,picks:[],I:lc[L.id]};t.picks.push(x.p)});
+  return Object.keys(teams).map(function(k){var t=teams[k],I=t.I,st=I.st[t.rid]||{},b=I.by[t.rid]||{},s=t.side,o=t.opp;
+    t.picks.sort(function(a,b){return a.season-b.season||a.round-b.round});var near=t.picks.filter(function(p){return p.near}),rd=near.length?near[0].round:t.picks[0].round;
+    t.st=st;t.s0=b.s0;t.sN=b.sN;t.po0=b.po0;t.poN=b.poN;t.rd=rd;t.near=near.length>0;t.mv=t.near&&b.s0&&b.sN?b.s0-b.sN:0;// + = pick moved earlier (better for Brett)
+    t.done=!!(s&&o&&s.ytp+s.live+o.ytp+o.live===0);t.has=!!(s&&o&&st.wk&&st.wk.lines);
+    t.res=!t.has?null:t.done?(s.act>o.act?'WON':s.act<o.act?'LOST':'TIED'):(s.act>o.act+0.05?'WINNING':s.act<o.act-0.05?'LOSING':'TIED');
+    var resGood=!t.has?null:t.done?(t.res==='TIED'?null:t.res==='LOST'):s.odds<0.5;// projected result, not just the current score
+    t.resWhy=!t.has?'':t.done?(t.res==='LOST'?'the loss helps':'the win hurts'):(s.odds<0.5?'a likely loss helps':'a likely win hurts');mpfGood=t.has&&I.avg?st.wk.tot<I.avg:null;t.resGood=resGood;t.mpfGood=mpfGood;
+    t.v=resGood==null&&mpfGood==null?null:resGood==null?(mpfGood?'g':'b'):mpfGood==null?(resGood?'g':'b'):resGood===mpfGood?(resGood?'g':'b'):'m';
+    return t}).sort(function(a,b){return Math.abs(b.mv)-Math.abs(a.mv)||(b.near-a.near)||(a.rd-b.rd)||((a.sN||99)-(b.sN||99))})}
+function pwCard(t){var L=t.L,s=t.side,o=t.opp,st=t.st,I=t.I,on=ownerOf(L,t.rid).name;
+  var lab=t.picks.map(function(p){return '<span class="pill y">'+esc(p.label)+'</span>'}).join(' ');
+  var mu='<div class="small muted">No matchup this week.</div>';
+  if(t.has){var oN=o.rid===L.me?'You':ownerOf(L,o.rid).name,left=s.ytp+s.live,oleft=o.ytp+o.live,cl=t.res==='WINNING'||t.res==='WON'?'ne':t.res==='TIED'?'':'pe';
+    mu='<div class="pwm"><b class="'+cl+'">'+t.res+'</b> '+f1(s.act)+'–'+f1(o.act)+' vs '+esc(oN)+(t.done?'':' · win '+Math.round(s.odds*100)+'% · '+left+' left (them '+oleft+')')+'</div>'}
+  var pk='';if(t.near&&t.sN){var nm=function(x){return t.rd+'.'+pad2(x)},d=t.mv;
+    pk='<div class="pwp">Projected <b>'+nm(t.sN)+'</b>'+(d?' <span class="'+(d>0?'pe':'ne')+'">'+(d>0?'▲':'▼')+' was '+nm(t.s0)+' before this week</span>':' <span class="muted">· unchanged this week</span>')+
+      (t.poN?' <span class="muted small">· in playoff spot (picks late)</span>':'')+'</div>'}
+  else pk='<div class="pwp muted">'+esc(t.picks[0].season)+' pick: order set by next season\'s max PF</div>';
+  var mp='';if(t.has){var g=t.mpfGood;mp='<div class="small">Max PF this week <b>'+Math.round(st.wk.act||0)+'</b>'+(t.done?'':' banked · ~'+Math.round(st.wk.tot)+' proj')+' (league avg '+Math.round(I.avg)+'): <span class="'+(g?'pe':'ne')+'">'+(g?'good for you':'bad for you')+'</span></div>'}
+  var vt=t.v==='g'?'<b class="pe">Good for you</b>':t.v==='b'?'<b class="ne">Bad for you</b>':t.v==='m'?'<b style="color:var(--gold)">Mixed</b> <span class="small muted">· '+t.resWhy+', but '+(t.mpfGood?'low max PF helps':'high max PF hurts')+(t.mv?' · net: pick '+(t.mv>0?'better':'worse'):'')+'</span>':'';
+  return '<a class="pwc'+(t.done?' fin':'')+' v'+(t.v||'n')+'" href="#picks"><div class="ft">'+esc(on)+' '+lab+' <span class="muted small">'+esc(L.name)+'</span>'+(t.done?' <span class="pwf">FINAL</span>':'')+'</div>'+mu+pk+mp+(vt?'<div class="small pwv">'+vt+'</div>':'')+'</a>'}
+function pickPanel(){var cs=pwCards();if(!cs.length)return '';var wk=cs.filter(function(t){return t.has}),good=wk.filter(function(t){return t.v==='g'}).length,bad=wk.filter(function(t){return t.v==='b'}).length,mix=wk.filter(function(t){return t.v==='m'}).length;
+  var sum=wk.length?'<b class="pe">'+good+' of '+wk.length+'</b> pick teams having a bad week for them (good for you)'+(bad?' · <span class="ne">'+bad+' having a good week (bad for you)</span>':'')+(mix?' · '+mix+' mixed':''):'No pick-team matchups this week.';
+  return '<section class="panel"><details class="pwd"'+(PWO?' open':'')+'><summary><h2 style="margin:0">🎯 Pick Watch <small>'+cs.length+' TEAMS</small> <span class="pwx">▾</span></h2><div class="small" style="margin-top:4px">'+sum+'</div></summary>'+
+    '<details class="inf"><summary class="small muted">ⓘ How this works</summary><div class="small muted">Rookie draft order = max PF (best possible lineup points, bench included): non-playoff teams pick first, lowest max PF first; playoff teams pick last. So a pick team <b>losing</b> (falls toward missing the playoffs) and scoring a <b>low max PF</b> both move your pick earlier. "Projected" re-ranks the league live: this week\'s likely winners (current score once final) and max PF banked + projected, versus the projection before this week. Tap a card for the full Pick Watch.</div></details>'+
+    '<div class="pwg">'+cs.map(pwCard).join('')+'</div></details></section>'}
 function evRow(e){if(e.kind==='start')return '<div class="lve sys small muted">⏺ '+esc(e.t)+' · '+ETTIME.format(new Date(e.at))+'</div>';
   if(e.kind==='swing')return '<div class="lve sys"><div class="small"><b style="color:'+(e.good?'var(--for)':'var(--ag)')+'">'+esc(e.t)+'</b> · '+ETTIME.format(new Date(e.at))+'</div>'+(e.roast?'<div class="small" style="color:var(--gold);font-style:italic">🦦 '+esc(e.roast)+'</div>':'')+'</div>';
   var pi=pinfo(e.id),legs=e.legs.filter(function(l){return shown(l.lid)}),groups={};
@@ -163,16 +203,16 @@ var lastSeen=0;
 function render(el,soft){load();if(!D.M)D.M=computeAll();var al=ST.alert&&Date.now()-ST.alert.at<3*6e4?ST.alert:null,evs=ST.ev.filter(keep);
   var ch=function(k,v,lab){return '<button class="chip'+(UIL[k]===v?' on':'')+'" data-lk="'+k+'" data-lv="'+v+'">'+lab+'</button>'};
   var html=(al?'<div class="box lva" style="border-color:'+(al.a[0].good?'rgba(94,214,140,.5)':'rgba(255,107,107,.5)')+'">'+al.a.map(function(a){return '<div class="small"><b>'+esc(a.t)+'</b>'+(a.roast?' <i style="color:var(--gold)">'+esc(a.roast)+'</i>':'')+'</div>'}).join('')+'</div>':'')+
-   '<section class="panel"><h2>⚡ Live <small>'+(isWindow()?'● POLLING EVERY 45s':'NO GAMES LIVE')+'</small></h2>'+strip()+tracker()+'</section>'+
+   '<section class="panel"><h2>⚡ Live <small>'+(isWindow()?'● POLLING EVERY 45s':'NO GAMES LIVE')+'</small></h2>'+strip()+tracker()+'</section>'+pickPanel()+
    '<section class="panel"><h2>⏳ Who\'s Left <small>PROJ PTS STILL TO COME</small></h2>'+whoLeft()+'</section>'+
    '<section class="panel"><h2>📜 Feed <small>'+evs.length+' EVENTS</small></h2><div class="chips">'+ch('side','both','Both')+ch('side','mine','Mine')+ch('side','opp','Opponents')+'<span style="flex:0 0 6px"></span>'+['all','QB','RB','WR','TE','K','DEF'].map(function(p){return ch('pos',p,p==='all'?'All pos':p)}).join('')+'</div><div class="chips">'+'<button class="chip'+(UIL.td?' on':'')+'" data-td>🏈 TDs only</button><button class="chip'+(UIL.big?' on':'')+'" data-big>💥 Big plays only (≥4)</button><button class="chip'+(VIB()?' on':'')+'" data-vib>📳 Vibrate on big plays</button><button class="chip" data-poll>↻ Poll now</button></div>'+
    (evs.length?evs.slice(0,UIL.more).map(evRow).join('')+(evs.length>UIL.more?'<button class="chip" data-more style="margin:10px auto 0;display:flex">Show more ('+(evs.length-UIL.more)+')</button>':''):'<div class="empty">No scoring changes yet'+(ST.since?' since '+ETTIME.format(new Date(ST.since)):'')+'.</div>')+
-   '<div class="hint">Events = changes in each starter\'s league-scored points between 45s polls of Sleeper live stats; play text from ESPN when the name matches. "earlier" rows are ESPN scoring plays from before you opened the feed. Kept for the week on this device.</div></section>'+
-   (pickLive()?'<section class="panel">'+pickLive()+'</section>':'');
+   '<div class="hint">Events = changes in each starter\'s league-scored points between 45s polls of Sleeper live stats; play text from ESPN when the name matches. "earlier" rows are ESPN scoring plays from before you opened the feed. Kept for the week on this device.</div></section>';
   el.innerHTML=html;
   if(soft&&lastSeen)$$('.lve[data-at]',el).forEach(function(r){if(+r.getAttribute('data-at')>lastSeen)r.classList.add('new')});lastSeen=Math.max(lastSeen,ST.ev.length?ST.ev[0].at:0);
   $$('[data-lk]',el).forEach(function(b){b.onclick=function(){UIL[b.getAttribute('data-lk')]=b.getAttribute('data-lv');render(el)}});
   $$('details[data-wl]',el).forEach(function(d){d.addEventListener('toggle',function(){var id=d.getAttribute('data-wl');if(d.open===!!WLO[id])return;WLO[id]=d.open;if(d.open&&!d.querySelector('.wld')){var L=D.leagues.filter(function(x){return x.id===id})[0],c=(D.M.cards||[]).filter(function(x){return x.L.id===id})[0];if(L&&c)d.insertAdjacentHTML('beforeend',wlDetail(c.me,'You','for')+wlDetail(c.op,esc(ownerOf(L,L.opp).name),'ag'))}})});
+  var pd=$('details.pwd',el);if(pd)pd.addEventListener('toggle',function(){PWO=pd.open;LS.set('wh:live:pwo',PWO)});
   var mb=$('[data-more]',el);if(mb)mb.onclick=function(){UIL.more+=15;render(el)};var tb=$('[data-td]',el);if(tb)tb.onclick=function(){UIL.td=!UIL.td;render(el)};var bb=$('[data-big]',el);if(bb)bb.onclick=function(){UIL.big=!UIL.big;render(el)};var vb=$('[data-vib]',el);if(vb)vb.onclick=function(){LS.set('wh:live:vib',!VIB());render(el)};
   $$('[data-vt]',el).forEach(function(v){v.onclick=function(){v.textContent=v.getAttribute('data-vt');v.className='vr on'}});
   var pb=$('[data-poll]',el);if(pb)pb.onclick=function(){pb.textContent='Polling…';poll()}}
