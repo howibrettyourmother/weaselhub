@@ -10,8 +10,13 @@ var LR={lead_me:["The Weasels take the lead over {O}. Act like you've been there
  blow_me:["Up {m} on {O}. That's not a game, that's a crime scene.","{O} is down {m}. Somebody check on {O}."],
  blow_op:["Down {m} to {O}. Time for the bench to start apologizing."]};
 function rl(k,seed,o){var a=LR[k],h=0;for(var i=0;i<seed.length;i++)h=(h*31+seed.charCodeAt(i))|0;return a[Math.abs(h)%a.length].replace(/\{(\w+)\}/g,function(m,q){return o[q]})}
-function load(){if(ST&&ST.k===LK())return ST;ST=LS.get(LK())||null;if(!ST||ST.k!==LK())ST={k:LK(),pts:{},raw:{},ev:[],od:{},sc:{},lead:{},since:0,bv:2};if(ST.bv!==2){ST.ev=ST.ev.filter(function(e){return e.kind!=='back'});ST.needBack=1}return ST}
-function save(){ST.ev=ST.ev.slice(0,250);Object.keys(ST.od).forEach(function(k){ST.od[k]=ST.od[k].slice(-160)});if(!LS.set(LK(),ST)){ST.ev=ST.ev.slice(0,80);LS.set(LK(),ST)}}
+function load(){if(ST&&ST.k===LK())return ST;ST=LS.get(LK())||null;if(!ST||ST.k!==LK())ST={k:LK(),pts:{},raw:{},ev:[],od:{},sc:{},lead:{},since:0,bv:2};if(ST.bv!==2){ST.ev=ST.ev.filter(function(e){return e.kind!=='back'});ST.needBack=1}
+  // per-player points already in the feed (survives the event cap). Migrating an older state: count stored events; if the cap may have evicted
+  // some, only trust games that kicked off after the oldest stored event
+  if(!ST.lg){ST.lg={};var ats=[];ST.ev.forEach(function(e){if(e.legs&&e.kind!=='back'){ats.push(e.at);lgAdd(e)}});ST.lgFrom=ST.ev.length>=240&&ats.length?Math.min.apply(null,ats):0}return ST}
+function lgAdd(e){e.legs.forEach(function(l){if(l.d==null)return;var m=ST.lg[l.lid]=ST.lg[l.lid]||{};m[e.id]=(m[e.id]||0)+l.d})}
+function save(){ST.ev.sort(function(a,b){return b.at-a.at});ST.ev=ST.ev.slice(0,300);Object.keys(ST.od).forEach(function(k){ST.od[k]=ST.od[k].slice(-160)});if(!LS.set(LK(),ST)){try{Object.keys(localStorage).forEach(function(k){if(/^wh:live:/.test(k)&&k!==LK())localStorage.removeItem(k)});['wh:players','wh:pl','wh:proj'].forEach(function(k){localStorage.removeItem(k)})}catch(e){}
+  if(!LS.set(LK(),ST)){ST.ev=ST.ev.slice(0,120);if(!LS.set(LK(),ST))console.warn('live: localStorage save failed')}}}
 function leagues(){return D.allLeagues||D.leagues}
 function sides(L){var me=L.mu.filter(function(m){return m.roster_id===L.me})[0],op=L.mu.filter(function(m){return m.roster_id===L.opp})[0];return {me:me,op:op}}
 function statsDelta(a,b){a=a||{};b=b||{};var out=[];KEYS.forEach(function(k){var d=(+b[k[0]]||0)-(+a[k[0]]||0);if(Math.abs(d)<0.5)return;out.push((d>0?'+':'')+Math.round(d)+' '+k[1])});return out.join(', ')}
@@ -52,11 +57,20 @@ function playText(sm,name,td){if(!sm)return null;var full=String(name).toLowerCa
   var pl=[];['previous','current'].forEach(function(k){var dr=sm.drives&&sm.drives[k];if(!dr)return;(Array.isArray(dr)?dr.slice(-2):[dr]).forEach(function(x){(x.plays||[]).forEach(function(p){pl.push(p)})})});
   var hit=pl.reverse().filter(function(p){var t=String(p.text||'').toLowerCase();return t.indexOf(ab)>=0||t.indexOf(full)>=0})[0];return hit?String(hit.text).trim():null}
 function scoreOf(L,m){return m?+m.points||0:0}
+// Repair: players whose games kicked off after the feed started should have all their points in the feed. Older builds silently re-baselined
+// a starter the first time he showed up in Sleeper's stats (e.g. SNF players first seen after the app was backgrounded), dropping those events.
+function reconcile(stats,evs,now){var by={};leagues().forEach(function(L){var S=sides(L);[['me',S.me],['op',S.op]].forEach(function(z){if(!z[1])return;(z[1].starters||[]).forEach(function(id){if(!id||id==='0')return;var st=stats[id],g=gameOf(pinfo(id).team);if(!st||!g||!g.kick||g.kick<Math.max(ST.since,ST.lgFrom||0)-60000)return;
+    var v=scoreStats(st,L.ss),logged=((ST.lg||{})[L.id]||{})[id]||0;
+    var miss=v-logged;if(Math.abs(miss)<0.05)return;if(evs[id]&&evs[id].legs.some(function(l){return l.lid===L.id}))return;
+    var e=by[id]=by[id]||{id:id,at:now,from:g.kick,catchup:1,legs:[],sd:logged===0?sdiff({},st):null,raw:logged===0?statsDelta({},st):'missed while the app was closed',td:false};
+    if(logged===0)e.td=((+st.rush_td||0)+(+st.rec_td||0)+(+st.pass_td||0)+(+st.def_td||0))>0;e.legs.push({lid:L.id,side:z[0],d:miss,tot:v});(ST.pts[L.id]=ST.pts[L.id]||{})[id]=v})})});
+  Object.keys(by).forEach(function(id){if(evs[id])evs[id].legs=evs[id].legs.concat(by[id].legs);else evs[id]=by[id]})}
 function poll(sim){if(_busy)return _busy;load();var now=Date.now();
   var pr=sim?Promise.resolve(sim):Promise.all([J(SAPI+'/stats/nfl/'+D.season+'/'+D.week+'?season_type=regular&position[]=QB&position[]=RB&position[]=WR&position[]=TE&position[]=K&position[]=DEF&_='+now),refreshMatchups().then(function(){return loadGames().catch(function(){})})]).then(function(r){var m={};(r[0]||[]).forEach(function(x){m[x.player_id]=x.stats||{}});return m});
   _busy=pr.then(function(stats){D.liveStats=stats;var prevPoll=ST.lastPoll||ST.since||now-POLL;ST.lastPoll=now;D.M=computeAll();var first=!ST.since,evs={},alerts=[];
     leagues().forEach(function(L){var S=sides(L);if(!S.me)return;var P=ST.pts[L.id]=ST.pts[L.id]||{};
       [['me',S.me],['op',S.op]].forEach(function(z){var side=z[0],m=z[1];if(!m)return;(m.starters||[]).forEach(function(id){if(!id||id==='0')return;var st=stats[id];if(!st)return;var v=scoreStats(st,L.ss);
+        if(P[id]==null&&!first){P[id]=0;ST.raw[id]={}}
         if(P[id]!=null&&Math.abs(v-P[id])>=0.05){var e=evs[id]=evs[id]||{id:id,at:now,from:prevPoll,legs:[],sd:sdiff(ST.raw[id],st),raw:statsDelta(ST.raw[id],st),td:((+st.rush_td||0)+(+st.rec_td||0)+(+st.pass_td||0)+(+st.def_td||0))>((ST.raw[id]&&((+ST.raw[id].rush_td||0)+(+ST.raw[id].rec_td||0)+(+ST.raw[id].pass_td||0)+(+ST.raw[id].def_td||0)))||0)};
           e.legs.push({lid:L.id,side:side,d:v-P[id],tot:v})}
         P[id]=v;ST.raw[id]={pass_yd:st.pass_yd,pass_td:st.pass_td,pass_int:st.pass_int,rush_yd:st.rush_yd,rush_td:st.rush_td,rec:st.rec,rec_yd:st.rec_yd,rec_td:st.rec_td,fum_lost:st.fum_lost,pass_sack:st.pass_sack,fgm:st.fgm,xpm:st.xpm,fgmiss:st.fgmiss,xpmiss:st.xpmiss,def_td:st.def_td,sack:st.sack,int:st.int,fum_rec:st.fum_rec,safe:st.safe,pts_allow:st.pts_allow,pass_2pt:st.pass_2pt,rush_2pt:st.rush_2pt,rec_2pt:st.rec_2pt}})});
@@ -68,12 +82,13 @@ function poll(sim){if(_busy)return _busy;load();var now=Date.now();
       if(!first&&ST.lead[L.id]&&lead&&lead!==ST.lead[L.id]){var t=rl(lead==='me'?'lead_me':'lead_op',L.id+now,{O:O});ST.ev.unshift({kind:'swing',at:now,lid:L.id,good:lead==='me',t:'Lead change in '+L.name+': '+f1(me)+'–'+f1(op),roast:t});alerts.push({good:lead==='me',t:'🔁 Lead change · '+L.name+' '+f1(me)+'–'+f1(op),roast:t})}
       var mg=me-op;if(!first&&Math.abs(mg)>=40&&!ST['bl'+L.id]){ST['bl'+L.id]=1;ST.ev.unshift({kind:'swing',at:now,lid:L.id,good:mg>0,t:'Blowout watch in '+L.name+': '+f1(me)+'–'+f1(op),roast:rl(mg>0?'blow_me':'blow_op',L.id,{O:O,m:f1(Math.abs(mg))})})}
       if(lead)ST.lead[L.id]=lead});
-    if(first){ST.since=now;ST.ev.unshift({kind:'start',at:now,t:'Live feed started: totals as of now; scoring changes from here on.'});save();return backfill()}
+    if(!first)reconcile(stats,evs,now);
+    if(first){ST.lg={};ST.lgFrom=0;ST.since=now;ST.ev.unshift({kind:'start',at:now,t:'Live feed started: totals as of now; scoring changes from here on.'});save();return backfill()}
     var bk=ST.needBack?backfill():Promise.resolve();
     var list=Object.keys(evs).map(function(k){return evs[k]});
     return bk.then(function(){return Promise.all(list.map(function(e){var pi=pinfo(e.id),g=gameOf(pi.team);if(g)e.qc=qcOf(g);e.miss=pi.pos==='K'&&/miss/.test(e.raw||'')&&e.legs.every(function(l){return l.d<=0.05});if(!g||isNaN(+e.id))return null;return summary(g).then(function(sm){e.play=playsFor(sm,pi,e);if(e.play)e.play=e.play.replace(/ \(Q\d [\d:]+\)$/,'')})}))}).then(function(){
       list.forEach(function(e){e.legs.forEach(function(l){var s=ST.sc[l.lid];l.me=s.me;l.op=s.op;l.odds=s.odds;l.dOdds=s.dOdds});e.tot=e.legs.reduce(function(a,l){return a+Math.abs(l.d)},0)/Math.max(1,e.legs.length);
-        ST.ev.unshift(e);if(Math.max.apply(null,e.legs.map(function(l){return Math.abs(l.d)}))>=4){var good=e.legs.some(function(l){return (l.side==='me')===(l.d>0)});alerts.push({good:good,t:'💥 '+pinfo(e.id).n+' '+(e.play||e.raw||'')})}});
+        ST.ev.unshift(e);lgAdd(e);if(Math.max.apply(null,e.legs.map(function(l){return Math.abs(l.d)}))>=4){var good=e.legs.some(function(l){return (l.side==='me')===(l.d>0)});alerts.push({good:good,t:'💥 '+pinfo(e.id).n+' '+(e.play||e.raw||'')})}});
       if(alerts.length){ST.alert={at:now,a:alerts.slice(0,3)};if(VIB()&&navigator.vibrate)try{navigator.vibrate(alerts.some(function(a){return /💥/.test(a.t)})?[60,40,60]:40)}catch(e){}}
       ST.ev.sort(function(a,b){return b.at-a.at});save()})}).then(function(){_busy=null;if(curTab()[0]==='live'){var el=$('#view');if(el)render(el,true)}},function(e){_busy=null;console.warn('live',e)});return _busy}
 function qcOf(g){var m=String(g.detail||'').match(/(\d+:\d+) - (\d)/);return m?'Q'+m[2]+' '+m[1]:g.state==='post'?'Final':String(g.detail||'').replace(/ - /,' ')}
@@ -140,12 +155,12 @@ function evRow(e){if(e.kind==='start')return '<div class="lve sys small muted">�
   var gH=Object.keys(groups).map(function(k){var g=groups[k];return '<div class="small"><b style="color:'+(g.good?'var(--for)':'var(--ag)')+'">'+(g.d==null?'':'<span class="dl">'+(Math.abs(g.d)<0.05?'0 pts':(g.d>0?'+':'−')+f1(Math.abs(g.d))+' pts')+'</span> · ')+(e.miss?(g.good?'missed (good for you)':'missed'):g.good?'helps you':'hurts you')+'</b>'+totH(g.ls)+' in '+g.ls.map(function(l){return esc(lgName(l.lid))}).join(' &amp; ')+'</div>'}).join('');
   var sc=legs.filter(function(l){return l.me!=null}).map(function(l){var L=leagues().filter(function(x){return x.id===l.lid})[0];return '<div class="small muted">'+esc(ownerOf(L,L.me).name)+' <b style="color:var(--ink)">'+f1(l.me)+' – '+f1(l.op)+'</b> '+esc(ownerOf(L,L.opp).name)+(l.odds!=null?' · '+pct(l.odds)+(l.dOdds&&Math.abs(l.dOdds)>=0.005?' ('+(l.dOdds>0?'+':'−')+Math.round(Math.abs(l.dOdds)*100)+')':''):'')+'</div>'}).join('');
   var td=tdOf(e),gd=legs.some(function(l){return l.side==='me'}),bd=legs.some(function(l){return l.side==='op'});
-  return '<div class="lve'+(e.kind==='back'?' back':'')+(td?' td '+(gd&&!bd?'tdg':bd&&!gd?'tdb':'tdm'):'')+'" data-at="'+e.at+'"><div class="ic">'+head(e.id)+'</div><div class="fx"><div class="ft"><span class="'+(gameOf(pi.team)&&gameOf(pi.team).state==='post'?'gdone':'')+'">'+esc(pi.n)+gmark(pi.team)+'</span> '+posChip(pi.pos)+(td?' <span class="tdx">🏈 TD</span>':'')+'</div><div class="ltm">'+ETTIME.format(new Date(e.at))+(e.from&&e.at-e.from>3*6e4?' · catch-up since '+ETTIME.format(new Date(e.from)).replace(/^\w+ /,''):'')+(e.qc?' · '+esc(e.qc):'')+(e.kind==='back'?' · before you opened':'')+'</div>'+(e.kind==='back'?'<div class="small">'+esc(e.play||'')+'</div>':'<div class="small bdl">'+breakdown(e,leagues().filter(function(x){return legs[0]&&x.id===legs[0].lid})[0])+'</div>'+(e.play?'<div class="ltm">'+esc(e.play)+'</div>':''))+gH+sc+'</div></div>'}
+  return '<div class="lve'+(e.kind==='back'?' back':'')+(td?' td '+(gd&&!bd?'tdg':bd&&!gd?'tdb':'tdm'):'')+'" data-at="'+e.at+'"><div class="ic">'+head(e.id)+'</div><div class="fx"><div class="ft"><span class="'+(gameOf(pi.team)&&gameOf(pi.team).state==='post'?'gdone':'')+'">'+esc(pi.n)+gmark(pi.team)+'</span> '+posChip(pi.pos)+(td?' <span class="tdx">🏈 TD</span>':'')+'</div><div class="ltm">'+ETTIME.format(new Date(e.at))+(e.catchup?' · catch-up (missed while closed)':e.from&&e.at-e.from>3*6e4?' · catch-up since '+ETTIME.format(new Date(e.from)).replace(/^\w+ /,''):'')+(e.qc?' · '+esc(e.qc):'')+(e.kind==='back'?' · before you opened':'')+'</div>'+(e.kind==='back'?'<div class="small">'+esc(e.play||'')+'</div>':'<div class="small bdl">'+breakdown(e,leagues().filter(function(x){return legs[0]&&x.id===legs[0].lid})[0])+'</div>'+(e.play?'<div class="ltm">'+esc(e.play)+'</div>':''))+gH+sc+'</div></div>'}
 function keep(e){if(e.kind==='start')return true;if(e.kind==='swing')return shown(e.lid)&&!UIL.td;var legs=e.legs.filter(function(l){return shown(l.lid)});if(!legs.length)return false;
   if(UIL.side==='mine'&&!legs.some(function(l){return l.side==='me'}))return false;if(UIL.side==='opp'&&!legs.some(function(l){return l.side==='op'}))return false;
   if(UIL.pos!=='all'&&pinfo(e.id).pos!==UIL.pos)return false;if(UIL.big&&!legs.some(function(l){return l.d!=null&&Math.abs(l.d)>=4}))return false;if(UIL.td&&!tdOf(e))return false;return true}
 var lastSeen=0;
-function render(el,soft){load();if(!D.M)D.M=computeAll();var al=ST.alert&&Date.now()-ST.alert.at<3*6e4?ST.alert:null,evs=ST.ev.filter(keep).slice(0,120);
+function render(el,soft){load();if(!D.M)D.M=computeAll();var al=ST.alert&&Date.now()-ST.alert.at<3*6e4?ST.alert:null,evs=ST.ev.filter(keep);
   var ch=function(k,v,lab){return '<button class="chip'+(UIL[k]===v?' on':'')+'" data-lk="'+k+'" data-lv="'+v+'">'+lab+'</button>'};
   var html=(al?'<div class="box lva" style="border-color:'+(al.a[0].good?'rgba(94,214,140,.5)':'rgba(255,107,107,.5)')+'">'+al.a.map(function(a){return '<div class="small"><b>'+esc(a.t)+'</b>'+(a.roast?' <i style="color:var(--gold)">'+esc(a.roast)+'</i>':'')+'</div>'}).join('')+'</div>':'')+
    '<section class="panel"><h2>⚡ Live <small>'+(isWindow()?'● POLLING EVERY 45s':'NO GAMES LIVE')+'</small></h2>'+strip()+tracker()+'</section>'+
@@ -161,11 +176,11 @@ function render(el,soft){load();if(!D.M)D.M=computeAll();var al=ST.alert&&Date.n
   var mb=$('[data-more]',el);if(mb)mb.onclick=function(){UIL.more+=15;render(el)};var tb=$('[data-td]',el);if(tb)tb.onclick=function(){UIL.td=!UIL.td;render(el)};var bb=$('[data-big]',el);if(bb)bb.onclick=function(){UIL.big=!UIL.big;render(el)};var vb=$('[data-vib]',el);if(vb)vb.onclick=function(){LS.set('wh:live:vib',!VIB());render(el)};
   $$('[data-vt]',el).forEach(function(v){v.onclick=function(){v.textContent=v.getAttribute('data-vt');v.className='vr on'}});
   var pb=$('[data-poll]',el);if(pb)pb.onclick=function(){pb.textContent='Polling…';poll()}}
-function renderLive(el){if(!D.leagues.length){el.innerHTML='<div class="panel empty">No leagues.</div>';return}render(el);if(!ST.since)poll()}
+function renderLive(el){if(!D.leagues.length){el.innerHTML='<div class="panel empty">No leagues.</div>';return}render(el);if(!ST.since||Date.now()-(ST.lastPoll||0)>POLL)poll()}
 function loop(){clearTimeout(_t);_t=setTimeout(function(){if(!document.hidden&&D.leagues.length&&(isWindow()||curTab()[0]==='live'&&Date.now()-(ST&&ST.lastPoll||0)>POLL))poll().then(loop,loop);else loop()},POLL)}
 window.LIVE={playsFor:playsFor,breakdown:breakdown,summary:summary,playStats:playStats,poll:poll,state:function(){return load()},render:render};
 EXTRA_TABS.push(['live','⚡','LIVE',renderLive]);
 if(window.TAB_ORDER)TAB_ORDER[0].splice(TAB_ORDER[0].indexOf('sunday')+1,0,'live');
 $('#tabs').innerHTML=navHTML();
-(window.afterBoot=window.afterBoot||[]).push(function(){setTimeout(function(){if(isWindow())poll();loop()},4000)});
+(window.afterBoot=window.afterBoot||[]).push(function(){setTimeout(function(){load();var played=Object.keys(D.games||{}).some(function(t){return D.games[t].state!=='pre'});if(isWindow()||ST.since&&played&&Date.now()-(ST.lastPoll||0)>POLL)poll();loop()},4000)});
 })();
