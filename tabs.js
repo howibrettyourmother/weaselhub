@@ -288,7 +288,7 @@ window.NEWS={items:null,strip:function(){var it=this.items;if(!it||!it.length)re
 
 EXTRA_TABS.push(['rosters','👥','ROSTERS',renderRosters],['exposure','🧲','EXPOSURE',renderExposure],['trade','🧶','TRADE',renderTrade],['waivers','🧺','WAIVERS',renderWaivers],['picks','🎯','PICKS',renderPicks],['recap','📰','RECAP',renderRecap],['news','🗞️','NEWS',renderNews]);
 $('#tabs').innerHTML=navHTML();
-window.resetTabCaches=function(){X=null;_trend=null};
+window.resetTabCaches=function(){X=null;_trend=null;if(window.resetTabCaches2)resetTabCaches2()};
 NEWS.reload=function(force){if(!D.leagues.length)return Promise.resolve();return allNews(force).then(function(N){NEWS.items=N.items;var t=curTab()[0];if(t==='sunday'||t==='news')rerender()}).catch(function(e){console.warn(e)})};
 (window.afterBoot=window.afterBoot||[]).push(function(){setTimeout(function(){NEWS.reload(true)},2500);
   (function loop(){setTimeout(function(){if(!document.hidden&&Date.now()-(D.newsAt||0)>=newsTTL()-3000)NEWS.reload(true).then(loop,loop);else loop()},20000)})()});

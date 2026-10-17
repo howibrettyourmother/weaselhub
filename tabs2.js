@@ -57,7 +57,7 @@ function renderHome(el){if(!D.leagues.length){el.innerHTML='<div class="panel em
   var odds={};
   function draw(){var tot={w:0,l:0};D.leagues.forEach(function(L){var s=standings(L)[L.me];tot.w+=s.w;tot.l+=s.l});
     var exp=D.M.cards.reduce(function(a,c){return a+c.me.odds},0);
-    el.innerHTML='<section class="panel"><h2>🏠 Snapshot <small>'+tot.w+'-'+tot.l+' OVERALL · WK '+D.week+' EXP '+f1(exp)+' W</small></h2><div class="grid2">'+D.leagues.map(function(L){return card(L,odds[L.id])}).join('')+'</div><div class="hint" style="margin-top:6px">Tap a league for the Sunday view. Playoff odds: 3,000-season Monte Carlo on the real remaining Sleeper schedule (this week from live projections, later weeks from points-per-game blended with this week\'s projection); seeds by wins then PF, divisions ignored.</div></section>'+
+    el.innerHTML=(window.BRIEF?BRIEF.html():'')+'<section class="panel"><h2>🏠 Snapshot <small>'+tot.w+'-'+tot.l+' OVERALL · WK '+D.week+' EXP '+f1(exp)+' W</small></h2><div class="grid2">'+D.leagues.map(function(L){return card(L,odds[L.id])}).join('')+'</div><div class="hint" style="margin-top:6px">Tap a league for the Sunday view. Playoff odds: 3,000-season Monte Carlo on the real remaining Sleeper schedule (this week from live projections, later weeks from points-per-game blended with this week\'s projection); seeds by wins then PF, divisions ignored.</div></section>'+
     rivalsHTML()}
   draw();
   D.leagues.forEach(function(L){futureMatchups(L).then(function(f){odds[L.id]=simOdds(L,f,3000);if(curTab()[0]==='home')draw()})})}

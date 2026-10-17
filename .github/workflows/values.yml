@@ -1,0 +1,20 @@
+name: daily value snapshot
+on:
+  schedule:
+    - cron: '23 11 * * *'   # daily ~7:23 AM ET (11:23 UTC)
+  workflow_dispatch:
+concurrency: { group: values-snapshot, cancel-in-progress: false }
+permissions: { contents: write }
+jobs:
+  snap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/snapshot_values.py
+      - name: commit
+        run: |
+          git config user.name 'weaselhub-bot'; git config user.email 'actions@users.noreply.github.com'
+          git add data/values_history.json
+          git commit -m 'data: daily value snapshot' || exit 0
+          for i in 1 2 3; do git pull --rebase -q && git push -q && exit 0; sleep 5; done; exit 1

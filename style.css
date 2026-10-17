@@ -150,3 +150,11 @@ details.wl>summary{list-style:none;cursor:pointer}details.wl>summary::-webkit-de
 .pwf{font:600 10px/1 inherit;letter-spacing:.06em;color:var(--muted,#9aa);border:1px solid rgba(255,255,255,.2);border-radius:4px;padding:2px 4px;vertical-align:middle;margin-left:4px}
 .lvc.fin{opacity:.75}
 .rl{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(255,255,255,.05)}.rl .ic,.rl img{flex:0 0 auto}.rlk{font:700 11px/1 inherit;width:30px;text-align:center}.rlw{text-align:right;flex:0 0 auto;line-height:1.1}.rl .fx{min-width:0;flex:1}
+/* round 2: briefing + value tracker */
+.brief.hot{border:1px solid rgba(255,199,44,.55);box-shadow:0 0 0 1px rgba(255,199,44,.15),0 8px 30px rgba(255,199,44,.08);background:linear-gradient(170deg,rgba(255,199,44,.07),rgba(255,255,255,.02))}
+.brief.hot h2{font-size:clamp(20px,6vw,28px)}
+.bfg{display:grid;grid-template-columns:1fr;gap:8px;margin-top:6px}@media(min-width:820px){.bfg{grid-template-columns:1fr 1fr}}
+.bf-l.bad{border-color:rgba(255,107,107,.45)}
+.vt-g{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}@media(max-width:420px){.vt-g{grid-template-columns:1fr}}
+.vt-l{border:1px solid var(--line);border-radius:10px;padding:6px 8px}.vt-h{display:flex;justify-content:space-between;gap:6px;font-size:12.5px}.vt-h b{overflow-wrap:anywhere}
+.vt-big{border:1px solid var(--line);border-radius:11px;padding:6px 8px}
