@@ -158,3 +158,11 @@ details.wl>summary{list-style:none;cursor:pointer}details.wl>summary::-webkit-de
 .vt-g{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}@media(max-width:420px){.vt-g{grid-template-columns:1fr}}
 .vt-l{border:1px solid var(--line);border-radius:10px;padding:6px 8px}.vt-h{display:flex;justify-content:space-between;gap:6px;font-size:12.5px}.vt-h b{overflow-wrap:anywhere}
 .vt-big{border:1px solid var(--line);border-radius:11px;padding:6px 8px}
+/* round 3: trade finder, war room, exposure */
+.tf-ctl{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 4px}.tf-ctl select{flex:1 1 150px;min-width:0;height:36px;border-radius:10px;background:#141b29;color:var(--ink);border:1px solid rgba(255,199,44,.35);padding:0 8px;font-size:13px}
+.tf-c{margin:6px 0}.tf-p{font-size:13px;margin-bottom:4px}.tf-g{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px}.tf-g>div>div{margin:2px 0;overflow-wrap:anywhere}
+.tf-why{margin:3px 0 4px;padding-left:18px;font-size:12.5px;line-height:1.4}.tf-why li{margin:1px 0}
+.wr-m{display:grid;grid-template-columns:1fr;gap:4px;margin-top:6px}@media(min-width:820px){.wr-m{grid-template-columns:1fr 1fr}}
+.wr-p{display:grid;grid-template-columns:44px 1fr;gap:2px 8px;padding:5px 8px;border:1px solid var(--line);border-radius:9px;font-size:13px}.wr-p small{grid-column:2;color:var(--mute);font-size:11px}.wr-p.me{border-color:rgba(255,199,44,.6);background:rgba(255,199,44,.07)}.wr-p b{color:var(--gold)}
+.wr-x{margin-bottom:6px}
+.ex-b{display:grid;grid-template-columns:42px 1fr 46px;gap:6px;align-items:center;font-size:12.5px;margin:3px 0}.ex-b i{display:block;height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden}.ex-b i b{display:block;height:100%;background:var(--gold)}.ex-b i b.hot{background:var(--ag)}.ex-b em{font-style:normal;text-align:right;color:var(--mute)}
