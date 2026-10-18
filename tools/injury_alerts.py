@@ -9,7 +9,7 @@ Output JSON (also written to /workspace/weasel_alerts_latest.json):
   changes[]  : STARTERS whose status CHANGED INTO Out/Doubtful/Questionable/Inactive/IR/PUP/Sus/bye since the last run  <- ping on these
   cleared[]  : starters who were flagged last run and are now healthy (e.g. Q -> active)
   current[]  : every currently flagged starter (all leagues), with locked=true once his game has kicked off
-  each item  : league, league_id, player, player_id, pos, team, slot, status, prev, body, kickoff_et, locked, source, swap (best healthy bench option + projections)
+  each item  : league, league_id, player, player_id, pos, team, slot, status, prev, body, kickoff_et, locked, source, swap (best healthy bench option whose game hasn't kicked off: player, proj, team, game, kickoff_et, kicks_before_starter, note)
 
 Status precedence (same as the hub): Sleeper's live projections feed (injury_status, cache-busted) > Sleeper players file
 (hub's slim copy if < 75 min old, else Sleeper's full file); IR/PUP/Sus/Inactive from the players file are never cleared;
@@ -72,7 +72,7 @@ def main():
         for t in (sb.get('week') or {}).get('teamsOnBye') or []: byes.add(FIX.get(t['abbreviation'], t['abbreviation']))
         for ev in sb.get('events') or []:
             c = ev['competitions'][0]; kick = datetime.datetime.fromisoformat(ev['date'].replace('Z', '+00:00')).timestamp(); stt = (c.get('status') or ev['status'])['type']['state']
-            for tm in c['competitors']: games[FIX.get(tm['team']['abbreviation'], tm['team']['abbreviation'])] = {'id': ev['id'], 'kick': kick, 'state': stt}
+            for tm in c['competitors']: games[FIX.get(tm['team']['abbreviation'], tm['team']['abbreviation'])] = {'id': ev['id'], 'kick': kick, 'state': stt, 'name': ev.get('shortName') or ev.get('name')}
         for g in {g['id']: g for g in games.values() if g['state'] != 'post' and g['kick'] - now <= 150 * 60}.values():
             try:
                 sm = get('https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event=' + g['id'])
@@ -125,12 +125,16 @@ def main():
                 if b in used: continue
                 bs, _ = status(b); bg = games.get(team(b) or '')
                 if bs in ALERT: continue
-                if not bg or bg['state'] != 'pre': continue
+                if not bg or bg['state'] != 'pre' or bg['kick'] <= now: continue  # swap's game already started/locked
                 pp = pos(b); pp = pp if isinstance(pp, list) else [pp]
-                if any(x in el for x in pp): cands.append((pj(b), b))
-            cands.sort(reverse=True); sw = None
-            if cands:
-                sw = {'player': name(cands[0][1]), 'player_id': cands[0][1], 'proj': cands[0][0]}
+                if any(x in el for x in pp): cands.append((pj(b), b, bg))
+            cands.sort(key=lambda c: (c[0], c[1]), reverse=True); sw = None
+            if cands and not locked:  # no swap once the starter's own game has locked
+                bg = cands[0][2]; kt = datetime.datetime.fromtimestamp(bg['kick'], ET)
+                sw = {'player': name(cands[0][1]), 'player_id': cands[0][1], 'proj': cands[0][0], 'team': team(cands[0][1]), 'game': bg.get('name'),
+                      'kickoff_et': kt.strftime('%a %-I:%M %p ET'), 'kickoff_ts': int(bg['kick']), 'kicks_before_starter': bool(g and bg['kick'] < g['kick'])}
+                if sw['kicks_before_starter']:
+                    sw['note'] = '%s plays the %s %s game (before %s) - swap before then' % (sw['player'], kt.strftime('%-I:%M %p ET'), bg.get('name') or team(cands[0][1]), name(pid))
                 if s != 'Questionable': used.add(cands[0][1])
             pp = pos(pid) if pid and pid != '0' else ['-']
             cur.append({'league': lg['name'].strip(), 'league_id': lid, 'player': name(pid) if pid and pid != '0' else '(empty slot)', 'player_id': pid or '', 'pos': pp[0] if isinstance(pp, list) else pp,

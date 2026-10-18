@@ -12,7 +12,7 @@ function brief(L){var r=L.rosters[L.me],m=L.mu.filter(function(x){return x.roste
   var st=m.starters||[],inS={},ex={};st.forEach(function(x){inS[x]=1});(r.reserve||[]).forEach(function(x){ex[x]=1});(r.taxi||[]).forEach(function(x){ex[x]=1});
   function ln(id){return playerLine(L,id,m.players_points)}
   function bad(l){var pi=l.pi;if(!pi.team)return 'NO TEAM';if(D.gamesOk&&!l.g)return 'BYE';return pi.inj&&BADI[pi.inj]?BADI[pi.inj]:null}
-  var bench=(r.players||[]).filter(function(x){return !inS[x]&&!ex[x]}).map(ln).filter(function(b){return b.state==='pre'&&!bad(b)});
+  var bench=(r.players||[]).filter(function(x){return !inS[x]&&!ex[x]}).map(ln).filter(function(b){return b.state==='pre'&&!(b.g&&+b.g.kick<=Date.now())&&!bad(b)});
   var used={},items=[];
   L.slots.forEach(function(slot,i){var id=st[i],el=ELIG[slot]||[slot];
     function best(){return bench.filter(function(b){return !used[b.id]&&(b.pi.fp||[]).some(function(p){return el.indexOf(p)>=0})}).sort(function(a,b){return b.proj-a.proj})[0]}
