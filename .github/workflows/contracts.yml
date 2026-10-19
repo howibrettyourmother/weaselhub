@@ -1,0 +1,21 @@
+name: contracts file
+on:
+  schedule:
+    - cron: '41 13 * * *'   # daily ~9:41 AM ET, after nflverse's ~8 AM ET contracts refresh
+  workflow_dispatch:
+concurrency: { group: contracts, cancel-in-progress: false }
+permissions: { contents: write }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -q pyarrow
+      - run: python3 tools/build_contracts.py
+      - name: commit
+        run: |
+          git config user.name 'weaselhub-bot'; git config user.email 'actions@users.noreply.github.com'
+          git add data/contracts.json
+          git commit -m 'data: contracts file' || exit 0
+          for i in 1 2 3; do git pull --rebase -q && git push -q && exit 0; sleep 5; done; exit 1

@@ -170,3 +170,9 @@ details.wl>summary{list-style:none;cursor:pointer}details.wl>summary::-webkit-de
 .row .cfx{font-size:11.5px;margin-top:3px;line-height:1.35;color:var(--mute)}.row .cfx b{color:inherit}.row .cfx .pe,.row .cfx b.pe{color:var(--for)}.row .cfx .ne,.row .cfx b.ne{color:var(--ag)}
 .row .bnote{font-size:11px;color:var(--mute);opacity:.8;margin-top:2px;font-style:italic}
 .row.mirror{display:flex;gap:10px;align-items:flex-start;opacity:.85;border-style:dashed}
+/* contracts */
+.ctcall{border-color:rgba(255,199,44,.45);margin-bottom:10px}.ctchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}.ctc{background:#1d2433;border:1px solid var(--line);border-radius:6px;padding:3px 7px;font-size:12.5px}
+.ctl{margin-top:6px}.ctr{display:grid;grid-template-columns:1.5fr 1fr 1.4fr;gap:8px;padding:7px 0;border-bottom:1px dashed var(--line);align-items:start;font-size:13px}
+.ctf b{font-family:var(--disp);letter-spacing:.03em}.ctf b.soon{color:var(--gold)}.ctd{line-height:1.35}
+@media (max-width:560px){.ctr{grid-template-columns:1fr 1fr}.ctd{grid-column:1/-1;margin-top:-4px}}
+.pill.fab{vertical-align:1px}
