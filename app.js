@@ -277,7 +277,7 @@ function espnInactives(){var now=Date.now(),ids=relevantIds(),byTeam={};Object.k
       D.statAt.espn=now;return 1}).catch(function(){return 0})})).then(function(r){D.stat=NS;D.statAt.espnN=r.reduce(function(a,b){return a+b},0);return D.statAt.espnN})}
 var _stBusy=null;
 function refreshStatus(manual){if(_stBusy)return _stBusy;
-  _stBusy=Promise.all([loadProj(),(manual||Date.now()-(D.pfAt||0)>=Math.max(5*6e4,statusEvery()))?loadPlayers(true).then(function(p){D.players=p}).catch(function(e){console.warn('players',e)}):null]).then(function(){return espnInactives()}).then(function(){_stBusy=null;D.M=null;D.at=D.at||Date.now();if(D.leagues.length)rerender();if(window.NEWS&&NEWS.reload&&NEWS.items)NEWS.reload(!!manual)},function(e){_stBusy=null;console.warn('status',e)});return _stBusy}
+  _stBusy=Promise.all([loadProj(),(manual||Date.now()-(D.pfAt||0)>=Math.max(5*6e4,statusEvery()))?loadPlayers(true).then(function(p){D.players=p}).catch(function(e){console.warn('players',e)}):null]).then(function(){return espnInactives()}).then(function(){_stBusy=null;D.M=null;D.at=D.at||Date.now();if(D.leagues.length)(manual?rerender:softRender)();if(window.NEWS&&NEWS.reload&&NEWS.items)NEWS.reload(!!manual)},function(e){_stBusy=null;console.warn('status',e)});return _stBusy}
 function nextKick(){var n=null;Object.keys(D.games||{}).forEach(function(k){var g=D.games[k];if(g.state==='pre'&&(!n||g.kick<n))n=+g.kick});return n}
 function statusEvery(){var nk=nextKick(),now=Date.now();if(nk&&nk-now<=90*6e4)return 6e4;var d=new Date().getDay();return (d===0||d===1||d===4||isWindow())?5*6e4:30*6e4}
 var _stT=null;function statusLoop(){clearTimeout(_stT);_stT=setTimeout(function(){if(!document.hidden&&Date.now()-(D.statAt.sleeper||0)>=statusEvery()-2000)refreshStatus().then(statusLoop,statusLoop);else statusLoop()},15000)}
@@ -475,8 +475,26 @@ var timer=null;
 function schedule(){clearTimeout(timer);timer=setTimeout(function(){if(document.hidden){schedule();return}if(isWindow()||gameDay()||Date.now()-D.at>15*6e4)liveRefresh().then(schedule,schedule);else schedule()},60000)}
 // game day = a game live or kicking off within 12h: re-pull lineups every 60s (cache-busted) so a lineup change in Sleeper shows up within ~1 min
 function gameDay(){var now=Date.now();for(var t in D.games){var g=D.games[t];if(g.state==='in'||(g.state==='pre'&&g.kick-now<12*36e5))return true}return false}
-function liveRefresh(){return Promise.all([loadGames(),refreshMatchups(true).catch(function(){return refreshMatchups()})]).then(function(){D.at=Date.now();rerender()})}
+function liveRefresh(){return Promise.all([loadGames(),refreshMatchups(true).catch(function(){return refreshMatchups()})]).then(function(){D.at=Date.now();D.M=null;softRender()})}
+var _lrBusy=null;var _lr0=liveRefresh;liveRefresh=function(){if(_lrBusy)return _lrBusy;_lrBusy=_lr0().then(function(){_lrBusy=null},function(e){_lrBusy=null;throw e});return _lrBusy};
 document.addEventListener('visibilitychange',function(){if(!document.hidden&&Date.now()-D.at>60000)liveRefresh()});
+
+// ---------------- UI-safe background re-renders ----------------
+// Background refreshes (scores, lineups, statuses, news, contracts) never re-render while you're touching/scrolling (last 3s) or have a
+// field focused; they wait for idle, skip entirely when the data didn't change, and keep chip-row/table scroll + page scroll in place.
+var LAST_IX=0;['touchstart','touchmove','pointerdown','wheel','keydown','scroll'].forEach(function(ev){addEventListener(ev,function(){LAST_IX=Date.now()},{passive:true,capture:true})});
+function busyUI(){var a=document.activeElement,v=$('#view');return Date.now()-LAST_IX<3000||!!(a&&v&&/^(SELECT|INPUT|TEXTAREA)$/.test(a.tagName)&&v.contains(a))}
+function whenIdle(fn){(function run(){if(document.hidden||busyUI()){setTimeout(run,document.hidden?3000:800);return}fn()})()}
+function snapUI(el){var o={y:scrollY,at:Date.now(),sx:{}};$$('.chips,.tw,[data-sx]',el).forEach(function(x,i){var k=x.id||(x.className+'#'+i);if(x.scrollLeft)o.sx[k]=x.scrollLeft});return o}
+function restoreUI(el,o){$$('.chips,.tw,[data-sx]',el).forEach(function(x,i){var k=x.id||(x.className+'#'+i);if(o.sx[k]!=null&&x.scrollLeft!==o.sx[k])x.scrollLeft=o.sx[k]});if(Math.abs(scrollY-o.y)>1)scrollTo(0,o.y)}
+function keepUI(fn){if(fn._k)return fn;var w=function(el){var o=snapUI(el||$('#view')),r=fn.apply(this,arguments);restoreUI(el||$('#view'),o);requestAnimationFrame(function(){if(LAST_IX<=o.at)restoreUI(el||$('#view'),o)});return r};w._k=1;return w}
+function viewSig(){var t=curTab()[0],a=[t,D.week,!!D.players,!!window.CT,(window.NEWS&&NEWS.items)?NEWS.items.length+':'+((NEWS.items[0]||{}).id||(NEWS.items[0]||{}).t||''):0,window.BRIEF&&BRIEF.tr?1:0];
+  (D.leagues||[]).forEach(function(L){(L.mu||[]).forEach(function(m){a.push(m.roster_id,m.points,(m.starters||[]).join(','),(m.starters_points||[]).join(','))})});
+  Object.keys(D.games||{}).forEach(function(k){var g=D.games[k];a.push(k,g.state,g.detail,(g.teams||[]).map(function(x){return x.score}).join('-'),g.dd||'')});
+  a.push(JSON.stringify(D.stat||{}));try{var ids=relevantIds();Object.keys(ids).forEach(function(id){var pi=pinfo(id),pr=D.proj&&D.proj[id];a.push(pi.inj||'',pi.team||'',pr?JSON.stringify(pr.st||pr.stats||pr.pts||''):'')})}catch(e){}
+  var s=a.join('|'),h=0;for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))|0;return t+':'+h+':'+s.length}
+var _lastSig=null,_srT=null;
+function softRender(){clearTimeout(_srT);_srT=setTimeout(function(){whenIdle(function(){var sg=viewSig();if(sg===_lastSig)return;rerender()})},250)}
 
 // ---------------- router ----------------
 var TABS=[['sunday','🏈','SUNDAY',renderSunday]];
@@ -487,8 +505,11 @@ function navA(t){return '<a href="#'+t[0]+'" data-k="'+t[0]+'"><span>'+t[1]+'</s
 function defaultTab(){var wd=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short'}).format(new Date());var live=false;for(var t in D.games)if(D.games[t].state==='in')live=true;return (live||wd==='Sun'||wd==='Mon'||wd==='Thu')?'sunday':'home'}
 function curTab(){var h=(location.hash||('#'+defaultTab())).slice(1).split('/')[0],all=TABS.concat(EXTRA_TABS);return all.filter(function(t){return t[0]===h})[0]||all[0]}
 function rerender(){var t=curTab(),el=$('#view');$$('#tabs a').forEach(function(a){a.className=a.getAttribute('data-k')===t[0]?'on':''});
-  try{t[3](el)}catch(e){console.error(e);el.innerHTML='<div class="panel err">Something broke rendering this tab: '+esc(e.message)+'</div>'}}
+  try{_lastSig=viewSig()}catch(e){}
+  try{keepUI(t[3])(el)}catch(e){console.error(e);el.innerHTML='<div class="panel err">Something broke rendering this tab: '+esc(e.message)+'</div>'}}
 addEventListener('hashchange',function(){rerender();scrollTo(0,0)});
+// chip handlers call renderSunday by name: keep chip-row scroll + page position when they re-render
+renderSunday=keepUI(renderSunday);TABS[0][3]=renderSunday;
 
 // ---------------- boot ----------------
 function boot(){
@@ -505,7 +526,7 @@ function boot(){
     D.at=Date.now();rerender();schedule();refreshStatus();statusLoop();
     // background: fill names/injuries for players without projection rows, refresh daily
     var missing=Object.keys(D.rostered).some(function(id){return !D.proj[id]&&isNaN(+id)===false&&!(D.players&&D.players[id])});
-    if(missing||!c||Date.now()-c.at>(statusEvery()<=5*6e4?3*36e5:864e5))setTimeout(function(){loadPlayers().then(function(p){D.players=p;rerender()}).catch(function(e){console.warn('players',e)})},800);
+    if(missing||!c||Date.now()-c.at>(statusEvery()<=5*6e4?3*36e5:864e5))setTimeout(function(){loadPlayers().then(function(p){D.players=p;softRender()}).catch(function(e){console.warn('players',e)})},800);
     if(window.afterBoot)window.afterBoot.forEach(function(f){try{f()}catch(e){console.error(e)}});
   }).catch(function(e){console.error(e);$('#view').innerHTML='<div class="panel err">Could not load: '+esc(e.message)+'. <a href="javascript:location.reload()">Retry</a></div>'})}
 // Header ↻ (and pull-to-refresh in standalone): force-refresh everything (games, matchups, projections/statuses, slim players, ESPN inactives, news,
@@ -516,13 +537,16 @@ var _rfLast=0;function fullRefresh(){if(_rfBusy)return _rfBusy;if(Date.now()-_rf
   try{sessionStorage.clear()}catch(e){}if(window.resetTabCaches)try{resetTabCaches()}catch(e){}
   var st=(_stBusy||Promise.resolve()).catch(function(){}).then(function(){return refreshStatus(true)});
   _rfBusy=Promise.all([loadGames(true),refreshMatchups(true),st]).then(function(){return window.LIVE&&curTab()[0]==='live'?LIVE.poll():null})
-    .then(function(){D.M=null;D.at=Date.now();rerender();toast('✓ Updated '+ETTIME.format(new Date()).replace(/^\w+ /,''))},
+    .then(function(){D.M=null;D.at=Date.now();whenIdle(rerender);toast('✓ Updated '+ETTIME.format(new Date()).replace(/^\w+ /,''))},
       function(e){console.warn('refresh',e);var t=toast('⚠️ Refresh failed: '+esc(e&&e.message||'network')+' <button class="chip" id="toastRetry">Retry</button>',8000,true);var r=t.querySelector('#toastRetry');if(r)r.onclick=function(){t.className='';_rfLast=0;fullRefresh()}})
     .then(function(){_rfBusy=null;b.classList.remove('busy');b.removeAttribute('aria-busy')});return _rfBusy}
 $('#refresh').onclick=function(){fullRefresh()};
 (function(){var sa=window.navigator.standalone||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches);if(!sa)return;
   var y0=null,ind=null,TH=80;function pull(dy){if(!ind){ind=document.createElement('div');ind.id='ptr';document.body.appendChild(ind)}ind.style.opacity=Math.min(1,dy/TH);ind.style.transform='translate(-50%,'+Math.min(dy,TH)*0.6+'px) rotate('+dy*3+'deg)';ind.className=dy>=TH?'go':''}
-  addEventListener('touchstart',function(e){y0=(scrollY<=0&&e.touches.length===1)?e.touches[0].clientY:null},{passive:true});
-  addEventListener('touchmove',function(e){if(y0==null)return;var dy=e.touches[0].clientY-y0;if(dy>8&&scrollY<=0)pull(dy);else if(ind)ind.style.opacity=0},{passive:true});
-  addEventListener('touchend',function(){if(ind&&ind.className==='go')fullRefresh();if(ind)ind.style.opacity=0;y0=null},{passive:true})})();
+  // only a deliberate, mostly-vertical pull that starts at the very top of the page and NOT on a horizontal scroller (chip rows, tables, tabs);
+  // 15s cooldown so swiping around never fires repeated full refreshes
+  var x0=null,last=0;function top(){var se=document.scrollingElement||document.documentElement;return scrollY<=0&&(se.scrollTop||0)<=0}
+  addEventListener('touchstart',function(e){var t=e.target;y0=null;if(e.touches.length!==1||!top()||Date.now()-last<15000)return;if(t&&t.closest&&t.closest('.chips,.tw,#tabs,[data-sx],select,input,details summary'))return;y0=e.touches[0].clientY;x0=e.touches[0].clientX},{passive:true});
+  addEventListener('touchmove',function(e){if(y0==null)return;var dy=e.touches[0].clientY-y0,dx=Math.abs(e.touches[0].clientX-x0);if(dx>24&&dx>dy*0.5){y0=null;if(ind){ind.style.opacity=0;ind.className=''}return}if(dy>8&&top())pull(dy);else if(ind){ind.style.opacity=0;ind.className=''}},{passive:true});
+  addEventListener('touchend',function(){if(y0!=null&&ind&&ind.className==='go'&&top()){last=Date.now();fullRefresh()}if(ind){ind.style.opacity=0;ind.className=''}y0=null},{passive:true})})();
 boot();

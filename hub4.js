@@ -3,7 +3,7 @@
 // Data: data/contracts.json, built daily by .github/workflows/contracts.yml from nflverse's OverTheCap-derived contracts release.
 (function(){
 var CT=null,CTP=null,UIc={sort:'fa'};
-function loadCT(){if(CTP)return CTP;CTP=SC('data/contracts.json?d='+new Date().toISOString().slice(0,13),6*36e5).then(function(d){CT=d;window.CT=d;try{if(['exposure','rosters','trade','sunday'].indexOf(curTab()[0])>=0)rerender()}catch(e){}return d}).catch(function(e){CTP=null;console.warn('contracts',e);return null});return CTP}
+function loadCT(){if(CTP)return CTP;CTP=SC('data/contracts.json?d='+new Date().toISOString().slice(0,13),6*36e5).then(function(d){CT=d;window.CT=d;try{if(['exposure','rosters','trade','sunday'].indexOf(curTab()[0])>=0)softRender()}catch(e){}return d}).catch(function(e){CTP=null;console.warn('contracts',e);return null});return CTP}
 function pos(id){var pi=pinfo(id);return pi.pos&&pi.pos!=='?'?pi.pos:(D.players&&D.players[id]&&D.players[id].p[0])||'?'}
 function season(){return +(CT&&CT.season)||+D.season||new Date().getFullYear()}
 function con(id){return CT&&CT.c?CT.c[id]||null:null}

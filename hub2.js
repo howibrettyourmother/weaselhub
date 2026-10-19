@@ -7,7 +7,7 @@ function etNow(){var o={};ETP.formatToParts(new Date()).forEach(function(p){o[p.
 var BADI={Out:'OUT',Doubtful:'DOUBTFUL',Questionable:'QUESTIONABLE',Inactive:'INACTIVE',IR:'IR',PUP:'PUP',Sus:'SUSPENDED',NA:'N/A',DNR:'DNR',COV:'COVID'};
 // ---------------- SUNDAY MORNING BRIEFING ----------------
 var TR=null,TRat=0;function trend(){if(TR&&Date.now()-TRat<30*6e4)return TR;TRat=Date.now();
-  return (TR=SC(SAPI+'/v1/players/nfl/trending/add?lookback_hours=24&limit=40',30*6e4).then(function(a){var o={};(a||[]).forEach(function(x){o[x.player_id]=x.count});BRIEF.tr=o;if(curTab()[0]==='home')rerender();return o}).catch(function(){return {}}))}
+  return (TR=SC(SAPI+'/v1/players/nfl/trending/add?lookback_hours=24&limit=40',30*6e4).then(function(a){var o={};(a||[]).forEach(function(x){o[x.player_id]=x.count});BRIEF.tr=o;if(curTab()[0]==='home')softRender();return o}).catch(function(){return {}}))}
 function brief(L){var r=L.rosters[L.me],m=L.mu.filter(function(x){return x.roster_id===L.me})[0];if(!r||!m)return null;
   var st=m.starters||[],inS={},ex={};st.forEach(function(x){inS[x]=1});(r.reserve||[]).forEach(function(x){ex[x]=1});(r.taxi||[]).forEach(function(x){ex[x]=1});
   function ln(id){return playerLine(L,id,m.players_points)}

@@ -90,7 +90,7 @@ function poll(sim){if(_busy)return _busy;load();var now=Date.now();
       list.forEach(function(e){e.legs.forEach(function(l){var s=ST.sc[l.lid];l.me=s.me;l.op=s.op;l.odds=s.odds;l.dOdds=s.dOdds});e.tot=e.legs.reduce(function(a,l){return a+Math.abs(l.d)},0)/Math.max(1,e.legs.length);
         ST.ev.unshift(e);lgAdd(e);if(Math.max.apply(null,e.legs.map(function(l){return Math.abs(l.d)}))>=4){var good=e.legs.some(function(l){return (l.side==='me')===(l.d>0)});alerts.push({good:good,t:'💥 '+pinfo(e.id).n+' '+(e.play||e.raw||'')})}});
       if(alerts.length){ST.alert={at:now,a:alerts.slice(0,3)};if(VIB()&&navigator.vibrate)try{navigator.vibrate(alerts.some(function(a){return /💥/.test(a.t)})?[60,40,60]:40)}catch(e){}}
-      ST.ev.sort(function(a,b){return b.at-a.at});save()})}).then(function(){_busy=null;if(curTab()[0]==='live'){var el=$('#view');if(el)render(el,true)}},function(e){_busy=null;console.warn('live',e)});return _busy}
+      ST.ev.sort(function(a,b){return b.at-a.at});save()})}).then(function(){_busy=null;if(curTab()[0]==='live')whenIdle(function(){var el=$('#view');if(el&&curTab()[0]==='live')keepUI(render)(el,true)})},function(e){_busy=null;console.warn('live',e)});return _busy}
 function qcOf(g){var m=String(g.detail||'').match(/(\d+:\d+) - (\d)/);return m?'Q'+m[2]+' '+m[1]:g.state==='post'?'Final':String(g.detail||'').replace(/ - /,' ')}
 // parse an ESPN scoring play into this player's stat line, so league scoring gives the real points (null = can't tell)
 function playStats(text,name){var t=String(text||'').replace(/\s+/g,' ').trim(),nm=normN(name),is=function(x){return normN(x)===nm},st={},m;
