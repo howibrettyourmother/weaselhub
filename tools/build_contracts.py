@@ -70,14 +70,26 @@ out, how = {}, {'gsis': 0, 'name': 0}
 for pid in sorted(rost):
     sp = allp.get(pid) or {}
     pos = sp.get('position')
-    if pos not in POSMAP: continue
+    if not pos or pos == 'DEF': continue
     r = None; g = sp.get('gsis_id')
     if g and g.strip() in byG: r = pick(byG[g.strip()]); how['gsis'] += 1
     else:
-        c = byN.get((norm(sp.get('full_name') or ''), POSMAP[pos])) or []
+        c = byN.get((norm(sp.get('full_name') or ''), POSMAP.get(pos, pos))) or []
         if len(c) > 1 and sp.get('team'): c = [x for x in c if TEAMS.get(sp['team'], '~') in (x.get('team') or '')] or c
         if len({x.get('otc_id') for x in c}) == 1: r = pick(c); how['name'] += 1
-    if not r: continue
+    if not r:  # name + position didn't resolve: unique name across positions (two-way guys like Travis Hunter)
+        c = [x for k, v in byN.items() if k[0] == norm(sp.get('full_name') or '') for x in v]
+        if len({x.get('otc_id') for x in c}) == 1: r = pick(c); how['name_any_pos'] = how.get('name_any_pos', 0) + 1
+    if not r and sp.get('team') and sp.get('last_name'):  # nickname: same last name + team + position, first names share a 3-letter prefix (Nick/Nicholas, Matt/Matthew)
+        fn, ln, tn = norm(sp.get('first_name')), norm(sp.get('last_name')), TEAMS.get(sp['team'], '~')
+        c = [x for x in act if norm(x['player'].split(' ', 1)[-1]) == ln and tn in (x.get('team') or '') and x.get('position') == POSMAP.get(pos, pos)
+             and (lambda f: f[:3] == fn[:3] and (f.startswith(fn) or fn.startswith(f) or len(fn) >= 3))(norm(x['player'].split(' ', 1)[0]))]
+        if len({x.get('otc_id') for x in c}) == 1: r = pick(c); how['nickname'] = how.get('nickname', 0) + 1
+    if not r:
+        if not sp.get('team') and pos in ('QB', 'RB', 'WR', 'TE'):  # no NFL team and no active deal: he's a free agent right now
+            g = sp.get('gsis_id'); old = [x for x in tb if (g and x.get('gsis_id') == g.strip()) or norm(x['player']) == norm(sp.get('full_name') or '')]
+            if old: out[pid] = {'now': 1, 'end': max((x.get('year_signed') or 0) + (x.get('years') or 1) - 1 for x in old), 'fa': season, 'kind': 'UFA', 'team': None}
+        continue
     d = derive(r, sp)
     if d: out[pid] = d
 skill = [p for p in rost if (allp.get(p) or {}).get('position') in ('QB', 'RB', 'WR', 'TE') and (allp.get(p) or {}).get('team')]
