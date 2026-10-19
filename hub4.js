@@ -13,7 +13,7 @@ function mine(){var P={};D.leagues.forEach(function(L){var r=L.rosters[L.me];((r
 function money(m){return m>=1?'$'+(m>=10?Math.round(m):m.toFixed(1))+'M':m>0?'$'+Math.round(m*1000)+'K':'–'}
 function dealNote(c){if(!c)return '';var s=season(),a=[];
   if(c.rk){a.push('Rookie deal');if(c.opt==='exercised')a.push('5th-yr option exercised ('+(c.dy+4)+')');else if(c.opt==='declined')a.push('5th-yr option declined');else if(c.opt==='pending')a.push('5th-yr option decision May '+(c.dy+3))}
-  else if(c.typ)a.push({Drafted:'Rookie deal',Extension:'Extension',UFA:'FA signing',SFA:'Street FA signing',Franchise:'Tag → long-term deal',RFA:'RFA tender',ERFA:'ERFA tender',Other:'Re-signed'}[c.typ]||esc(c.typ));
+  else if(c.typ)a.push({Drafted:'Rookie deal',Extension:'Extension',UFA:'FA signing',SFA:'Street FA signing',Franchise:'Tag → long-term deal',RFA:'RFA tender',ERFA:'ERFA tender',Practice:'Practice-squad deal',Other:'Re-signed'}[c.typ]||esc(c.typ));
   if(c.end===s)a.push('<b style="color:var(--gold)">contract year</b>');return a.join(' · ')}
 function ctHTML(){
   if(!CT)return '<section class="panel" id="ctx"><h2>📝 Contracts</h2><div class="spin">Loading contracts…</div></section>';
