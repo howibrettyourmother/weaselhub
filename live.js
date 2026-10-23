@@ -75,7 +75,7 @@ function poll(sim){if(_busy)return _busy;load();var now=Date.now();
           e.legs.push({lid:L.id,side:side,d:v-P[id],tot:v})}
         P[id]=v;ST.raw[id]={pass_yd:st.pass_yd,pass_td:st.pass_td,pass_int:st.pass_int,rush_yd:st.rush_yd,rush_td:st.rush_td,rec:st.rec,rec_yd:st.rec_yd,rec_td:st.rec_td,fum_lost:st.fum_lost,pass_sack:st.pass_sack,fgm:st.fgm,xpm:st.xpm,fgmiss:st.fgmiss,xpmiss:st.xpmiss,def_td:st.def_td,sack:st.sack,int:st.int,fum_rec:st.fum_rec,safe:st.safe,pts_allow:st.pts_allow,pass_2pt:st.pass_2pt,rush_2pt:st.rush_2pt,rec_2pt:st.rec_2pt}})});
       // score line + odds history + lead changes
-      var c=(D.M.cards||[]).filter(function(x){return x.L.id===L.id})[0],me=scoreOf(L,S.me),op=scoreOf(L,S.op),odds=c?c.me.odds:null,prevO=(ST.od[L.id]||[]).slice(-1)[0];
+      var c=(D.M&&D.M.cards||[]).filter(function(x){return x.L.id===L.id})[0],me=scoreOf(L,S.me),op=scoreOf(L,S.op),odds=c?c.me.odds:null,prevO=(ST.od[L.id]||[]).slice(-1)[0];
       ST.sc[L.id]={me:me,op:op,odds:odds,dOdds:prevO&&odds!=null?odds-prevO[1]:0};
       if(odds!=null&&(!prevO||Math.abs(prevO[1]-odds)>0.002||now-prevO[0]>10*6e4))(ST.od[L.id]=ST.od[L.id]||[]).push([now,odds]);
       var lead=me>op+0.05?'me':op>me+0.05?'op':ST.lead[L.id]||null,O=ownerOf(L,L.opp).name;
@@ -225,7 +225,7 @@ function render(el,soft){load();if(!D.M)D.M=computeAll();var al=ST.alert&&Date.n
   el.innerHTML=html;
   if(soft&&lastSeen)$$('.lve[data-at]',el).forEach(function(r){if(+r.getAttribute('data-at')>lastSeen)r.classList.add('new')});lastSeen=Math.max(lastSeen,ST.ev.length?ST.ev[0].at:0);
   $$('[data-lk]',el).forEach(function(b){b.onclick=function(){UIL[b.getAttribute('data-lk')]=b.getAttribute('data-lv');render(el)}});
-  $$('details[data-wl]',el).forEach(function(d){d.addEventListener('toggle',function(){var id=d.getAttribute('data-wl');if(d.open===!!WLO[id])return;WLO[id]=d.open;if(d.open&&!d.querySelector('.wld')){var L=D.leagues.filter(function(x){return x.id===id})[0],c=(D.M.cards||[]).filter(function(x){return x.L.id===id})[0];if(L&&c)d.insertAdjacentHTML('beforeend',wlDetail(c.me,'You','for')+wlDetail(c.op,esc(ownerOf(L,L.opp).name),'ag'))}})});
+  $$('details[data-wl]',el).forEach(function(d){d.addEventListener('toggle',function(){var id=d.getAttribute('data-wl');if(d.open===!!WLO[id])return;WLO[id]=d.open;if(d.open&&!d.querySelector('.wld')){var L=D.leagues.filter(function(x){return x.id===id})[0],c=(D.M&&D.M.cards||[]).filter(function(x){return x.L.id===id})[0];if(L&&c)d.insertAdjacentHTML('beforeend',wlDetail(c.me,'You','for')+wlDetail(c.op,esc(ownerOf(L,L.opp).name),'ag'))}})});
   var pd=$('details.pwd',el);if(pd)pd.addEventListener('toggle',function(){PWO=pd.open;LS.set('wh:live:pwo',PWO)});
   var mb=$('[data-more]',el);if(mb)mb.onclick=function(){UIL.more+=15;render(el)};var tb=$('[data-td]',el);if(tb)tb.onclick=function(){UIL.td=!UIL.td;render(el)};var bb=$('[data-big]',el);if(bb)bb.onclick=function(){UIL.big=!UIL.big;render(el)};var vb=$('[data-vib]',el);if(vb)vb.onclick=function(){LS.set('wh:live:vib',!VIB());render(el)};
   $$('[data-vt]',el).forEach(function(v){v.onclick=function(){v.textContent=v.getAttribute('data-vt');v.className='vr on'}});

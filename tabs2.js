@@ -47,7 +47,7 @@ function simOdds(L,fut,N){var st=standings(L),rids=Object.keys(L.rosters).map(Nu
 // ---------- HOME: league snapshot ----------
 function renderHome(el){if(!D.leagues.length){el.innerHTML='<div class="panel empty">No active leagues.</div>';return}
   if(!D.M)D.M=computeAll();
-  function card(L,odds){var st=standings(L),me=st[L.me],n=Object.keys(L.rosters).length,pt=(L.raw.settings||{}).playoff_teams||6,c=D.M.cards.filter(function(x){return x.L===L})[0];
+  function card(L,odds){var st=standings(L),me=st[L.me],n=Object.keys(L.rosters).length,pt=(L.raw.settings||{}).playoff_teams||6,c=(D.M&&D.M.cards||[]).filter(function(x){return x.L===L})[0];
     var live='';if(c){var started=c.me.ytp<c.me.lines.length||c.op.ytp<c.op.lines.length,anyLive=c.me.live+c.op.live>0;
       live='<div class="small" style="margin-top:4px">Wk '+D.week+' vs <b>'+esc(ownerOf(L,L.opp).name)+'</b>: '+(started?f1(c.me.actSum)+'–'+f1(c.op.actSum)+' · ':'')+'proj '+f1(c.me.fin)+'–'+f1(c.op.fin)+' · <b style="color:'+(c.me.odds>=0.5?'var(--for)':'var(--ag)')+'">'+pct(c.me.odds)+'</b> '+(anyLive?'<span class="live">● LIVE</span>':started?'<span class="muted">'+bankLabel(c.me,c.op)+'</span>':'')+'</div>'}
     var o=odds&&odds[L.me];
@@ -56,7 +56,7 @@ function renderHome(el){if(!D.leagues.length){el.innerHTML='<div class="panel em
      '<div class="small muted">'+f1(me.pf)+' PF (#'+me.pfRank+') · top '+pt+' make it</div>'+live+(L.calls?'<div class="small" style="margin-top:3px">🧠 '+(L.calls.calls.length?'<b style="color:var(--gold)">'+callsSummary(L.calls)+'</b>':callsSummary(L.calls))+'</div>':'')+'</a>'}
   var odds={};
   function draw(){var tot={w:0,l:0};D.leagues.forEach(function(L){var s=standings(L)[L.me];tot.w+=s.w;tot.l+=s.l});
-    var exp=D.M.cards.reduce(function(a,c){return a+c.me.odds},0);
+    var exp=(D.M&&D.M.cards||[]).reduce(function(a,c){return a+c.me.odds},0);
     el.innerHTML=(window.BRIEF?BRIEF.html():'')+'<section class="panel"><h2>🏠 Snapshot <small>'+tot.w+'-'+tot.l+' OVERALL · WK '+D.week+' EXP '+f1(exp)+' W</small></h2><div class="grid2">'+D.leagues.map(function(L){return card(L,odds[L.id])}).join('')+'</div><div class="hint" style="margin-top:6px">Tap a league for the Sunday view. Playoff odds: 3,000-season Monte Carlo on the real remaining Sleeper schedule (this week from live projections, later weeks from points-per-game blended with this week\'s projection); seeds by wins then PF, divisions ignored.</div></section>'+
     rivalsHTML()}
   draw();
