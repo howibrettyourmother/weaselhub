@@ -11,4 +11,4 @@
 `data/contracts.json` is rebuilt daily by `.github/workflows/contracts.yml` (`tools/build_contracts.py`) from the nflverse `contracts` release (historical_contracts.parquet, OverTheCap-derived). Only players rostered in Brett's Sleeper leagues. Matching: Sleeper gsis_id, else exact normalized name + position (team breaks ties); no confident match = left out (UI says "unknown"). Shown on the Exposure tab (Contracts section + "hitting free agency" callout) and as small "FA YYYY" badges for deals ending after this season.
 
 ## Coaches Corner (#coach)
-Dynasty Guru's Wilson Weasels game plan. Content: `data/coaches_corner.md` (markdown; each `##` heading becomes a collapsible card, `|` tables and `-` lists supported). To update, replace that file and push; `cc.js` renders it.
+Dynasty Guru's Wilson Weasels game plan. Content: `data/cc_<league>.md` (shadynasty, f2020, dynastyjunkies, livefree; switcher at top, last choice remembered) (markdown; each `##` heading becomes a collapsible card, `|` tables and `-` lists supported). To update, replace the file and push; `cc.js` renders it.
