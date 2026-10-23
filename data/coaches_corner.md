@@ -1,6 +1,6 @@
 # Coaches Corner: Wilson Weasels
 
-SHADYNASTY game plan as of Thu Oct 22, 2026, 9:30 PM ET: Brett is 6-0 and a near-lock for the playoffs. The real gap to ManBearPig1984 is at RB2/FLEX, and TE/QB surplus plus an IR stash can pay for an elite RB without touching the core.
+SHADYNASTY game plan, fact-checked against live Sleeper data Thu Oct 22, 2026, 9:30 PM ET: Brett is 6-0 and a near-lock for the playoffs. The real gap to ManBearPig1984 is at RB2/FLEX, and TE/QB surplus plus an IR stash can pay for an elite RB without touching the core.
 
 ## Snapshot
 - **Record:** 6-0 (1st place), the only unbeaten team
@@ -9,6 +9,8 @@ SHADYNASTY game plan as of Thu Oct 22, 2026, 9:30 PM ET: Brett is 6-0 and a near
 - **FAAB left:** $50 of $100
 - **Current Sleeper week:** Week 7 is in progress (TNF played). Week 8 is vs ManBearPig1984
 - **Trade deadline / playoffs:** Week 14 / Weeks 15-17, 6 teams
+- **Lineup:** QB, 2 RB, 3 WR, TE, 2 FLEX, SUPER_FLEX, DEF, 12 bench. No kickers.
+- **Week 7 so far:** leading DetroitDumpsterFires 1.6-0.0. Current starters: Mahomes, McCaffrey, Judkins, JSN, Waddle, Odunze, Bowers, Lamb, Kelce, Stroud, LAR. Lamar (Q) and Rice (Q) are benched.
 
 ## Standings
 | Team | W-L | PF | Max PF | FAAB |
@@ -34,7 +36,7 @@ SHADYNASTY game plan as of Thu Oct 22, 2026, 9:30 PM ET: Brett is 6-0 and a near
 | QB | C.J. Stroud | 25 | 4,256 | 18.9 | Tier 2 | SF starter. Moves only for an overpay |
 | QB | Deshaun Watson | 31 | 2,565 | 15.1 | Tier 4 | Surplus. Best QB trade chip |
 | QB | Mac Jones | 28 | 2,357 | -0.2 | Stash | Keep (Brett stash) |
-| QB | Taylen Green (taxi) | 24 | 1,493 | — | Dev | Out; taxi |
+| QB | Taylen Green (taxi) | 24 | 1,493 | — | Dev | Taxi stash (no injury tag on Sleeper) |
 | RB | Christian McCaffrey | 30 | 5,685 | 20.3 | Win-now | FP ROS #7 RB. Age cliff after 2026 |
 | RB | Quinshon Judkins | 22 | 4,843 | 11.3 | Core | Questionable. PFN dynasty RB13 |
 | RB | TreVeyon Henderson | 24 | 4,768 | 5.9 | Name value | PFN RB15 but RB5 role. Sell |
@@ -46,11 +48,11 @@ SHADYNASTY game plan as of Thu Oct 22, 2026, 9:30 PM ET: Brett is 6-0 and a near
 | WR | Rashee Rice | 26 | 4,708 | 9.5 | Starter | Questionable. Upside WR3 |
 | WR | Jaylen Waddle | 27 | 4,622 | 9.2 | Starter | Questionable. WR3/FLEX |
 | WR | Rome Odunze | 24 | 4,284 | 8.2 | Young | Trade chip or hold |
-| WR | Tyreek Hill | 31 | 1,052 | — | Stash | Keep (intentional stash) |
+| WR | Tyreek Hill | 31 | 1,052 | — | Stash | Free agent (no NFL team). Keep (intentional stash) |
 | WR | Brandon Aiyuk | 28 | 0 | — | Dead | Reserve/left squad, DNR. IR-eligible |
 | WR | Elijah Sarratt (taxi) | 23 | 2,187 | 2.3 | Dev | Taxi |
 | WR | Bryce Lance (taxi) | 24 | 1,959 | 3.3 | Dev | Taxi |
-| TE | Brock Bowers | 23 | 8,052 | 20.6 | Elite | Untouchable |
+| TE | Brock Bowers | 23 | 8,052 | 20.6 | Elite | Untouchable. Bye Week 13 |
 | TE | Travis Kelce | 37 | 2,961 | 12.4 | Rental | Questionable. Sell to a contender |
 | TE | Pat Freiermuth | 27 | 2,486 | 10.6 | Surplus | Trade chip |
 | TE | T.J. Hockenson | 29 | 2,484 | 9.8 | Surplus | Questionable. Trade chip |
@@ -98,7 +100,7 @@ SHADYNASTY game plan as of Thu Oct 22, 2026, 9:30 PM ET: Brett is 6-0 and a near
 - Partner: moreho15 (3-3, $8 FAAB, RB-rich, TE Kraft 9.4)
 - Get Chuba Hubbard (3,959, 19.6 PPG)
 - Give Pat Freiermuth (2,486) + 2027 3rd from ManBearPig1984 (late, 2,479) = 4,965
-- Why it works: Danny upgrades TE. Brett turns a bench TE into a starting-caliber RB.
+- Why it works: moreho15 upgrades TE. Brett turns a bench TE into a starting-caliber RB.
 
 ### 4. 2-for-1 consolidation
 - Partner: Bigmike9193 (3-3, eight RBs, QB2 Herbert 11.7)
@@ -118,34 +120,44 @@ SHADYNASTY game plan as of Thu Oct 22, 2026, 9:30 PM ET: Brett is 6-0 and a near
 - **Etienne return:** When he is activated, move Aiyuk into the IR slot and play Etienne as RB depth or a trade chip.
 - **Taxi (4/4 full):** Matt Hibner is the weakest taxi spot (KTC 0). Swap him only for a rookie who emerges on waivers.
 - **Keep:** Tyreek Hill, Mac Jones, Stroud (unless overpaid), JSN, Bowers, Lamb, Judkins.
-- **Statuses to watch (live Sleeper):** Questionable: Lamar, Judkins, Rice, Waddle, Kelce, Hockenson, Kamara. Out/IR: Price, Etienne, Taylen Green. Aiyuk: DNR.
+- **Statuses to watch (live Sleeper):** Questionable: Lamar, Judkins, Rice, Waddle, Kelce, Hockenson, Kamara. IR: Price, Etienne. Aiyuk: DNR. Bowers, Mahomes, McCaffrey, JSN, Lamb, Stroud: no tag.
+
+## Bye planner (Weeks 8-14)
+| Week | Weasels on bye | Fix |
+|---|---|---|
+| Week 8 | McCaffrey, Stroud, Kamara, Mac Jones (SF); Etienne (NO, IR) | Biggest bye week, and it's the Badfish game. SF: Lamar if cleared, else Watson. RB2: Henderson next to Judkins. |
+| Week 9 | Freiermuth (PIT) | No starter hit |
+| Week 10 | Waddle (DEN), Odunze (CHI), PHI DST | WR3/WR flex: Rice, plus Meyers if claimed |
+| Week 11 | JSN, Judkins, Henderson, Price (SEA/CLE/NE), Watson, Taylen Green, LAR DST | Two RBs and the top WR out. Kamara/McCaffrey at RB, Rice + Meyers at WR, BAL DST |
+| Week 13 | Bowers (LV), BAL DST | TE: Kelce/Hockenson/Freiermuth (keep one until then). Start LAR |
+| Week 14 | Lamb (DAL) | Deadline week: Rice/Waddle/Odunze cover |
 
 ## Week-by-week plan
 | Week | Opponent | Plan |
 |---|---|---|
 | Week 7 (live) | DetroitDumpsterFires | Finish 7-0. Submit the Meyers claim before Tuesday waivers. |
-| Week 8 | ManBearPig1984 | Statement game. Start LAR DST (9.3 projected vs LAC). Send trade 1 offer this week. |
+| Week 8 | ManBearPig1984 | Statement game with McCaffrey and Stroud on bye. Lamar or Watson at SF, Henderson at RB2. Start LAR DST (9.3 projected vs LAC). Send trade 1 offer this week. |
 | Week 9 | Bigmike9193 | Pitch trade 4 while his QB2 hole is obvious. |
 | Week 10 | AdamDenver | Close any RB deal by now so the new RB gets 4 games before the playoffs. |
-| Week 11 | BamaGradLeague | LAR bye: start BAL. Push trade 2 if no RB acquired. |
+| Week 11 | BamaGradLeague | LAR, JSN, Judkins on bye: start BAL. Push trade 2 if no RB acquired. |
 | Week 12 | moreho15 | Revisit trade 3. Use FAAB on injury fill-ins. |
-| Week 13 | Ramrod | BAL bye: start LAR. Lock the playoff seed or bye. |
+| Week 13 | Ramrod | Bowers and BAL on bye: start LAR and a backup TE. Lock the playoff seed. |
 | Week 14 (deadline) | TheTunaSquad | Last chance for consolidation trades. Set the playoff lineup and handcuffs. |
 | Weeks 15-17 | Playoffs | BAL has the better playoff DST slate (21.5 projected vs LAR 20.8). |
 
 ## Offseason dynasty outlook
 - Sell or reassess McCaffrey (31 in 2027) and Kelce (38, retirement risk) by the 2027 rookie draft. Their value falls off a cliff in the offseason.
 - The young core to build around: JSN, Bowers, Lamb, Judkins, Odunze, Price, plus Lamar, Stroud and Mahomes in Superflex.
-- Draft capital is thin in 2027 (three 3rds). Buy a top-6 2027 1st from joebags85, Detroit or Tuna before their records are locked in.
+- Draft capital is thin in 2027 (three 3rds). Rookie draft order is by max PF, not record: non-playoff teams pick first, lowest max PF first, then playoff teams by finish. Today's Pick Watch: joebags85 (596.3 max PF), DetroitDumpsterFire (672.1, also holds Brett's own 1st and 2nd), TheTunaSquad (741.3), BamaGradLeague (803.3). Buy one of those 1sts while max PF still has room to move.
 - Mahomes (31) and Lamar (29) are the QB window. Stroud is the bridge. Mac Jones and Taylen Green are stashes.
 - Tyreek Hill and Aiyuk stay as zero-cost lottery tickets if roster room allows.
 
 ## Caveats
 - Pick ownership check: Sleeper's traded_picks shows TheTunaSquad still owns its 2027 1st. Brett does not hold Tuna's 2027 1st on Sleeper. His 2028 1st is AdamDenver's, since Tuna's 2028 1st went to AdamDenver. Confirm with Brett. Any off-platform deal is unrecorded.
-- Week numbering: Sleeper shows Week 7 in progress, so the brief's 'Week 8' runs one week ahead.
 - KTC values are a Superflex snapshot from Oct 2, 2026. FantasyCalc cross-check gives the same ordering. PPG is Sleeper full-PPR season to date.
+- Injury tags and byes are from live Sleeper/ESPN on Oct 22, 2026 at 9:30 PM ET; KTC, PPG, rankings and trade math are Dynasty Guru's.
 - Playoff odds are a rough estimate (no simulation): at 6-0 with 7 games left and 6 of 12 teams qualifying, Brett is a near-lock (over 95%). A top-2 seed is likely but contested by Justin and Ramrod.
-- Trade values are KTC math, not guaranteed acceptance. Kelce, Hockenson and Freiermuth are fine to move, but Bowers must stay healthy for TE.
+- Trade values are KTC math, not guaranteed acceptance. Kelce, Hockenson and Freiermuth are fine to move, but keep one through Bowers's Week 13 bye.
 
 ## Sources
 - [FantasyPros ROS consensus (Oct 22, 2026)](https://www.fantasypros.com/nfl/fantasy-football-rankings/ros.php)
