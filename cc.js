@@ -1,0 +1,30 @@
+'use strict';
+// Coaches Corner: Dynasty Guru's Wilson Weasels game plan.
+// Content lives in data/coaches_corner.md (plain markdown: #, ##, ###, -, | tables |, **bold**, [links](url)).
+// To update: replace that file and push. Each ## section becomes a collapsible card.
+(function(){
+var MD=null;
+function inl(s){return esc(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g,function(m,t,u){return '<a href="'+u.replace(/&amp;/g,'&').replace(/"/g,'%22')+'" target="_blank" rel="noopener">'+t+'</a>'})}
+function cells(l){return l.replace(/^\s*\|/,'').replace(/\|\s*$/,'').split('|').map(function(c){return c.trim()})}
+function block(lines){var out=[],i=0;
+  while(i<lines.length){var l=lines[i];
+    if(/^\s*$/.test(l)){i++;continue}
+    if(/^### /.test(l)){out.push('<h3 class="cch3">'+inl(l.slice(4))+'</h3>');i++;continue}
+    if(/^\s*\|/.test(l)){var rows=[];while(i<lines.length&&/^\s*\|/.test(lines[i]))rows.push(lines[i++]);var hd=cells(rows[0]);var body=rows.slice(1).filter(function(r){return !/^\s*\|[\s:|-]+\|\s*$/.test(r)});
+      out.push('<div class="tw"><table class="cct"><thead><tr>'+hd.map(function(h){return '<th>'+inl(h)+'</th>'}).join('')+'</tr></thead><tbody>'+body.map(function(r){var c=cells(r),me=/Wilson Weasels|^Brett/.test(c[0])||/^Brett/.test(c[c.length-1]);return '<tr'+(me?' class="ccme"':'')+'>'+c.map(function(x){return '<td>'+inl(x)+'</td>'}).join('')+'</tr>'}).join('')+'</tbody></table></div>');continue}
+    if(/^\s*- /.test(l)){var it=[];while(i<lines.length&&/^\s*- /.test(lines[i]))it.push(lines[i++].replace(/^\s*- /,''));out.push('<ul class="ccl">'+it.map(function(x){return '<li>'+inl(x)+'</li>'}).join('')+'</ul>');continue}
+    var p=[];while(i<lines.length&&lines[i].trim()&&!/^(#|\s*- |\s*\|)/.test(lines[i]))p.push(lines[i++]);out.push('<p>'+inl(p.join(' '))+'</p>')}
+  return out.join('')}
+var ICON={'Snapshot':'📋','Standings':'📊','Roster audit':'🩺','Draft pick inventory':'🎯','Waiver / IR / taxi moves':'🧺','Week-by-week plan':'🗓️','Offseason dynasty outlook':'🔭','Caveats':'⚠️','Sources':'🔗'};
+function render(md){var L=md.replace(/\r/g,'').split('\n'),title='Coaches Corner',intro=[],secs=[],cur=null;
+  L.forEach(function(l){if(/^# /.test(l)){title=l.slice(2);return}if(/^## /.test(l)){cur={h:l.slice(3),b:[]};secs.push(cur);return}(cur?cur.b:intro).push(l)});
+  var h='<section class="panel cc"><h2>🧠 '+inl(title)+'<small>DYNASTY GURU</small></h2><div class="box ccintro">'+block(intro)+'</div></section>';
+  secs.forEach(function(s,k){var ic=ICON[s.h]||(/trade/i.test(s.h)?'🧶':/vs/i.test(s.h)?'⚔️':/need/i.test(s.h)?'🔍':'📌');
+    h+='<details class="panel ccs"'+(k<3||/trade|vs/i.test(s.h)?' open':'')+'><summary><h2>'+ic+' '+inl(s.h)+'</h2></summary>'+block(s.b)+'</details>'});
+  return h+'<div class="hint">Game plan written by Dynasty Guru; stats are as given in the plan (not live). Edit <code>data/coaches_corner.md</code> to update.</div>'}
+function load(force){return fetch('data/coaches_corner.md?t='+(force?Date.now():new Date().toISOString().slice(0,13)),{cache:'no-cache'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.text()}).then(function(t){MD=t;return t})}
+function renderCC(el){if(MD){el.innerHTML=render(MD);return}el.innerHTML='<div class="spin">Loading Coaches Corner…</div>';load().then(function(){if(curTab()[0]==='coach')el.innerHTML=render(MD)}).catch(function(e){el.innerHTML='<div class="panel err">Couldn\'t load Coaches Corner: '+esc(e.message)+'</div>'})}
+EXTRA_TABS.push(['coach','🧠','COACHES CORNER',renderCC]);
+if(window.TAB_ORDER)TAB_ORDER[0].push('coach');
+$('#tabs').innerHTML=navHTML();
+})();

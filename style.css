@@ -176,3 +176,13 @@ details.wl>summary{list-style:none;cursor:pointer}details.wl>summary::-webkit-de
 .ctf b{font-family:var(--disp);letter-spacing:.03em}.ctf b.soon{color:var(--gold)}.ctd{line-height:1.35}
 @media (max-width:560px){.ctr{grid-template-columns:1fr 1fr}.ctd{grid-column:1/-1;margin-top:-4px}}
 .pill.fab{vertical-align:1px}
+/* Coaches Corner */
+.ccs>summary{list-style:none;cursor:pointer}.ccs>summary::-webkit-details-marker{display:none}
+.ccs>summary h2{margin:0}.ccs[open]>summary h2{margin-bottom:10px}
+.ccs>summary h2:after{content:'▾';margin-left:auto;color:var(--gold);font-size:16px}.ccs:not([open])>summary h2:after{content:'▸'}
+.cc .ccintro p{margin:0;font-size:14px;line-height:1.45}
+.ccl{margin:0;padding-left:18px;font-size:13.5px;line-height:1.45}.ccl li{margin:0 0 6px}
+.cch3{font:700 15px var(--disp);letter-spacing:.04em;color:var(--gold);margin:12px 0 4px;text-transform:uppercase}
+.cct th,.cct td{padding:5px 6px;text-align:left;border-bottom:1px solid rgba(255,255,255,.08);vertical-align:top}
+.cct th{color:var(--gold);font-weight:700;white-space:nowrap}.cct tr.ccme td{background:rgba(255,199,44,.12);font-weight:700}
+.ccs a,.cc a{color:var(--gold)}
