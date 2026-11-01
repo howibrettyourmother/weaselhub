@@ -121,13 +121,16 @@ function gmark(team){var g=gameOf(team);return g?gmk(g.state):''}
 // ---------------- projections (Sleeper unofficial; CORS *) ----------------
 function loadProj(){
   var u=SAPI+'/projections/nfl/'+D.season+'/'+D.week+'?season_type=regular&position[]=QB&position[]=RB&position[]=WR&position[]=TE&position[]=K&position[]=DEF';
-  return (D.proj&&Object.keys(D.proj).length?J(u+'&_='+Date.now()):SC(u,5*6e4)).then(function(arr){try{sessionStorage.setItem('wh:sc:'+u,JSON.stringify({at:Date.now(),d:arr}))}catch(e){}D.statAt=D.statAt||{};D.statAt.sleeper=Date.now();var m={};arr.forEach(function(x){m[x.player_id]={s:x.stats||{},pl:x.player||{},team:x.team}});D.proj=m})
+  return (D.proj&&Object.keys(D.proj).length?J(u+'&_='+Date.now()):SC(u,5*6e4)).then(function(arr){try{sessionStorage.setItem('wh:sc:'+u,JSON.stringify({at:Date.now(),d:arr}))}catch(e){}D.statAt=D.statAt||{};D.statAt.sleeper=Date.now();var m={};(arr||[]).forEach(function(x){m[x.player_id]={s:x.stats||{},pl:x.player||{},team:x.team}});if(!Object.keys(m).length&&D.proj&&Object.keys(D.proj).length)return;D.proj=m;
+    // fresh projections: drop each league's cached per-player projections (a load that failed once used to pin everyone at 0 and empty the Rooting Guide)
+    (D.allLeagues||[]).concat(D.leagues||[]).forEach(function(L){if(L&&L.pc)L.pc={}})})
     .catch(function(e){D.errors.push('Projections unavailable ('+e.message+').');if(!D.proj)D.proj={}})}
 function scoreStats(s,ss){var t=0;for(var k in ss){var w=ss[k];if(!w)continue;var v=s[k];
     if(v==null){if(k==='fgmiss'){v=(s.fgmiss_0_19||0)+(s.fgmiss_20_29||0)+(s.fgmiss_30_39||0)+(s.fgmiss_40_49||0)+(s.fgmiss_50p||0)}else continue}
     t+=v*w}return t}
 function projFor(L,id){if(L.pc[id]!=null)return L.pc[id];var pr=D.proj[id],v=0;
   if(pr&&pr.s){v=scoreStats(pr.s,L.ss);if(!isFinite(v)||(v===0&&pr.s.pts_ppr)){v=L.ppr>=1?pr.s.pts_ppr:L.ppr>=0.5?pr.s.pts_half_ppr:pr.s.pts_std;v=v||0}}
+  if(!pr&&!Object.keys(D.proj||{}).length)return v;// projections not loaded yet: don't cache the 0
   return (L.pc[id]=v)}
 
 // ---------------- leagues ----------------

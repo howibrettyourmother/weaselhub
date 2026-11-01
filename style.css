@@ -6,7 +6,7 @@ body{margin:0;color:var(--ink);font:14px/1.4 -apple-system,BlinkMacSystemFont,"S
  padding:0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 a{color:#ffe07a;text-decoration:none}
 .wrap{position:relative;max-width:1000px;margin:0 auto;padding:12px 10px 30px}
-.top{position:sticky;top:0;z-index:50;background:linear-gradient(180deg,rgba(5,7,13,.98),rgba(5,7,13,.92));border-bottom:1px solid rgba(255,255,255,.07);padding-top:env(safe-area-inset-top)}
+.top{position:sticky;top:0;z-index:50;background:#05070d linear-gradient(180deg,#05070d,#080b14);isolation:isolate;border-bottom:1px solid rgba(255,255,255,.07);padding-top:env(safe-area-inset-top)}
 .brand{display:flex;align-items:center;gap:8px;padding:8px 12px 2px;max-width:1000px;margin:0 auto}
 .brand .logo{border-radius:50%;border:2px solid var(--gold);object-fit:cover}
 .brand b{font:700 24px/1 var(--disp);letter-spacing:.06em;background:linear-gradient(180deg,#fff3c4 0%,#ffc72c 48%,#c98a00 54%,#ffd96a 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
