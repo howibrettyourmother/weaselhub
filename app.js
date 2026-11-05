@@ -89,7 +89,9 @@ function posChip(pos){var c=/^(QB|RB|WR|TE|K|DEF)$/.test(pos)?pos:'IDP';return '
 
 // ---------------- schedule (ESPN public scoreboard; CORS *) ----------------
 var ETFMT=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'numeric',hour12:false});
-var ETTIME=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'numeric',minute:'2-digit'});
+var _ETT=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short',hour:'numeric',minute:'2-digit'}),_ETWD=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short'});
+// kickoffs from the Sleeper fallback schedule have a date but no time: show the day only instead of a fake noon kickoff
+var ETTIME={format:function(d){return d&&d._approx?_ETWD.format(d)+' (time TBA)':_ETT.format(d)}};
 function slotOf(d){var parts=ETFMT.formatToParts(d),wd='',h=0;parts.forEach(function(p){if(p.type==='weekday')wd=p.value;if(p.type==='hour')h=+p.value%24});
   if(wd==='Thu')return 'thu';if(wd==='Fri')return 'fri';if(wd==='Sat')return 'sat';
   if(wd==='Sun'){if(h<12)return 'sunam';if(h<15)return 'early';if(h<19)return 'late';return 'snf'}
@@ -97,7 +99,9 @@ function slotOf(d){var parts=ETFMT.formatToParts(d),wd='',h=0;parts.forEach(func
 var SLOTS=[['thu','Thursday'],['fri','Friday'],['sat','Saturday'],['sunam','Sun AM (Intl)'],['sun','Sunday'],['early','Sun Early'],['late','Sun Late'],['snf','Sun Night'],['mon','Monday'],['oth','Other'],['bye','Bye/None']];
 var SLOTNAME={};SLOTS.forEach(function(s){SLOTNAME[s[0]]=s[1]});
 function loadGames(bust){
-  return J('https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week='+D.week+'&seasontype=2&dates='+D.season+(bust?'&_='+Date.now():'')).then(function(sb){
+  var SBU='https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week='+D.week+'&seasontype=2&dates='+D.season;
+  // one retry with a fresh cache-buster before falling back (a stale CDN copy can come back without CORS headers)
+  return J(SBU+(bust?'&_='+Date.now():'')).catch(function(){return J(SBU+'&_='+Date.now()+'r')}).then(function(sb){
     var g={},byes={};(sb.week&&sb.week.teamsOnBye||[]).forEach(function(t){byes[ESPN_FIX[t.abbreviation]||t.abbreviation]=1});
     (sb.events||[]).forEach(function(ev){var c=ev.competitions[0],st=c.status||ev.status,kick=new Date(ev.date);
       var state=st.type.state,per=st.period||0,clk=st.clock||0,frac=1;
@@ -108,7 +112,7 @@ function loadGames(bust){
     D.games=g;D.byes=byes;D.gamesOk=true;D.gamesSrc='ESPN'}).catch(function(e){
     // fallback: Sleeper schedule (dates + status only, no kickoff times)
     return J(SAPI+'/schedule/nfl/regular/'+D.season).then(function(all){var g={};all.filter(function(x){return +x.week===+D.week}).forEach(function(x){
-        var dt=new Date(x.date+'T17:00:00Z'),wd=new Date(x.date+'T12:00:00Z').getUTCDay(),slot=['sun','mon','oth','oth','thu','fri','sat'][wd];
+        var dt=new Date(x.date+'T17:00:00Z');dt._approx=true;var wd=new Date(x.date+'T12:00:00Z').getUTCDay(),slot=['sun','mon','oth','oth','thu','fri','sat'][wd];
         var state=x.status==='complete'?'post':(x.status==='pre_game'||x.status==='scheduled'||!x.status)?'pre':'in';
         var info={id:x.game_id,kick:dt,slot:slot,state:state,frac:state==='in'?0.5:state==='pre'?1:0,detail:state==='in'?'live':state,teams:[{ab:x.away,ha:'away',score:0},{ab:x.home,ha:'home',score:0}],name:x.away+' @ '+x.home};
         g[x.home]=info;g[x.away]=info});

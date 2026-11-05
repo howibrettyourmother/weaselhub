@@ -45,21 +45,26 @@ function simOdds(L,fut,N){var st=standings(L),rids=Object.keys(L.rosters).map(Nu
   var o={};rids.forEach(function(r){o[r]={po:made[r]/N,top:top[r]/N}});return o}
 
 // ---------- HOME: league snapshot ----------
+// dynasty line per league card: FantasyCalc roster+pick value rank, starter-strength rank, core age, thinnest position (all computed live by teamModel)
+function dynLine(L){var t=L.model&&L.model.teams&&L.model.teams[L.me];if(!t||!t.tot)return '';var n=Object.keys(L.rosters).length,
+  win=t.vRank<=Math.ceil(n/3)&&t.sRank<=Math.ceil(n/3)?'Win-now window':t.vRank<=Math.ceil(n/3)?'Loaded long-term':t.sRank<=Math.ceil(n/3)?'Contender, thin future':t.vRank>2*n/3?'Rebuild mode':'Middle of the pack';
+  return '<div class="small" style="margin-top:3px">💎 Dynasty value <b>#'+t.vRank+'</b> of '+n+' · starters <b>#'+t.sRank+'</b> · core age '+(t.cAge?t.cAge.toFixed(1):'–')+(t.holes&&t.holes.length?' · thin at <b>'+t.holes.slice(0,2).join(', ')+'</b>':'')+' · <span class="muted">'+win+'</span></div>'}
 function renderHome(el){if(!D.leagues.length){el.innerHTML='<div class="panel empty">No active leagues.</div>';return}
   if(!D.M)D.M=computeAll();
   function card(L,odds){var st=standings(L),me=st[L.me],n=Object.keys(L.rosters).length,pt=(L.raw.settings||{}).playoff_teams||6,c=(D.M&&D.M.cards||[]).filter(function(x){return x.L===L})[0];
     var live='';if(c){var started=c.me.ytp<c.me.lines.length||c.op.ytp<c.op.lines.length,anyLive=c.me.live+c.op.live>0;
       live='<div class="small" style="margin-top:4px">Wk '+D.week+' vs <b>'+esc(ownerOf(L,L.opp).name)+'</b>: '+(started?f1(c.me.actSum)+'–'+f1(c.op.actSum)+' · ':'')+'proj '+f1(c.me.fin)+'–'+f1(c.op.fin)+' · <b style="color:'+(c.me.odds>=0.5?'var(--for)':'var(--ag)')+'">'+pct(c.me.odds)+'</b> '+(anyLive?'<span class="live">● LIVE</span>':started?'<span class="muted">'+bankLabel(c.me,c.op)+'</span>':'')+'</div>'}
     var o=odds&&odds[L.me];
-    return '<a class="box" style="display:block;color:inherit" href="#sunday"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:2px 0">'+esc(L.name)+hq(L)+'</h3><span class="small muted">'+esc(ownerOf(L,L.me).name)+'</span></div>'+
+    return '<div class="box" role="link" tabindex="0" style="display:block;color:inherit;cursor:pointer" onclick="if(!event.target.closest(\'a\'))location.hash=\'#sunday\'" onkeydown="if(event.key===\'Enter\')location.hash=\'#sunday\'"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="margin:2px 0">'+esc(L.name)+hq(L)+'</h3><span class="small muted">'+esc(ownerOf(L,L.me).name)+'</span></div>'+
      '<div class="mini"><div><b>'+me.w+'-'+me.l+(me.t?'-'+me.t:'')+'</b><small>RECORD</small></div><div><b>#'+me.rank+'</b><small>OF '+n+'</small></div><div><b>'+(o?pct(o.po):'…')+'</b><small>PLAYOFFS</small></div><div><b>'+(o?pct(o.top):'…')+'</b><small>#1 SEED</small></div></div>'+
-     '<div class="small muted">'+f1(me.pf)+' PF (#'+me.pfRank+') · top '+pt+' make it</div>'+live+(L.calls?'<div class="small" style="margin-top:3px">🧠 '+(L.calls.calls.length?'<b style="color:var(--gold)">'+callsSummary(L.calls)+'</b>':callsSummary(L.calls))+'</div>':'')+'</a>'}
+     '<div class="small muted">'+f1(me.pf)+' PF (#'+me.pfRank+') · top '+pt+' make it</div>'+dynLine(L)+live+(L.calls?'<div class="small" style="margin-top:3px">🧠 '+(L.calls.calls.length?'<b style="color:var(--gold)">'+callsSummary(L.calls)+'</b>':callsSummary(L.calls))+'</div>':'')+'</div>'}
   var odds={};
   function draw(){var tot={w:0,l:0};D.leagues.forEach(function(L){var s=standings(L)[L.me];tot.w+=s.w;tot.l+=s.l});
     var exp=(D.M&&D.M.cards||[]).reduce(function(a,c){return a+c.me.odds},0);
     el.innerHTML=(window.BRIEF?BRIEF.html():'')+'<section class="panel"><h2>🏠 Snapshot <small>'+tot.w+'-'+tot.l+' OVERALL · WK '+D.week+' EXP '+f1(exp)+' W</small></h2><div class="grid2">'+D.leagues.map(function(L){return card(L,odds[L.id])}).join('')+'</div><div class="hint" style="margin-top:6px">Tap a league for the Sunday view. Playoff odds: 3,000-season Monte Carlo on the real remaining Sleeper schedule (this week from live projections, later weeks from points-per-game blended with this week\'s projection); seeds by wins then PF, divisions ignored.</div></section>'+
     rivalsHTML()}
   draw();
+  if(window.WH_ensure&&D.leagues.some(function(L){return !L.model}))WH_ensure().then(function(){if(curTab()[0]==='home')draw()}).catch(function(){});
   D.leagues.forEach(function(L){futureMatchups(L).then(function(f){odds[L.id]=simOdds(L,f,3000);if(curTab()[0]==='home')draw()})})}
 function rivalsHTML(){var rows=[];D.leagues.forEach(function(L){(L.rivals||[]).filter(function(x){return x.rid!==L.opp}).forEach(function(x){var o=ownerOf(L,x.rid),s=L.sides&&L.sides[x.rid],vs=s&&s.vs?(s.vs.rid===L.me?'YOU':ownerOf(L,s.vs.rid).name):'—';
     rows.push('<div class="flag"><div class="ic">👀</div><div class="fx"><div class="ft">'+esc(o.name)+' <span class="muted small">'+esc(L.name)+'</span></div><div class="small muted">'+x.w+'-'+x.l+(x.t?'-'+x.t:'')+' · #'+x.rank+' · '+f1(x.pf)+' PF</div><div class="small">This week vs '+esc(vs)+(s&&s.vs&&s.vs.rid!==L.me?' · '+pct(1-s.odds)+' chance they lose':'')+'. You want them to lose (tracked here only; not part of the Sunday Rooting Guide).</div></div></div>')})});
