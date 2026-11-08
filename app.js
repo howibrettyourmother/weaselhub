@@ -256,6 +256,19 @@ function computeAll(){
     var any=P.ent.some(function(e){return e.state==='pre'||e.state==='in'});P.done=!any;
     P.key=P.done?P.netBase:P.net;return P});
   return {players:list,cards:cards,flags:flags,picks:picks}}
+// Rooting views follow the header chips (D.leagues). D.allLeagues stays the full set for the chip row.
+// If a player model still carries entries from leagues that are not selected, drop those and re-sum.
+function scopeRootPlayer(P){if(!P||!P.ent)return P;var ids={};(D.leagues||[]).forEach(function(L){ids[L.id]=1});
+  var ent=P.ent.filter(function(e){return e.L&&ids[e.L.id]});if(ent.length===P.ent.length)return P;if(!ent.length)return null;
+  var Q={id:P.id,line:P.line,ent:ent,net:0,netBase:0,leagues:{}};
+  ent.forEach(function(e){Q.net+=e.imp;Q.netBase+=e.base;Q.leagues[e.L.id]=1});
+  Q.nL=Object.keys(Q.leagues).length;
+  Q.conf=ent.some(function(e){return e.base>0.02})&&ent.some(function(e){return e.base<-0.02});
+  Q.done=!ent.some(function(e){return e.state==='pre'||e.state==='in'});Q.key=Q.done?Q.netBase:Q.net;return Q}
+function rootSumPhrase(){var all=D.allLeagues||[];if(!D.leagues||!all.length||D.leagues.length>=all.length)return 'summed across leagues';
+  if(D.leagues.length===1)return 'for '+esc(D.leagues[0].name)+' only';return 'summed across the '+D.leagues.length+' selected leagues'}
+function rootWhere(){var all=D.allLeagues||[];if(!D.leagues||!all.length||D.leagues.length>=all.length)return 'across all leagues';
+  if(D.leagues.length===1)return 'in '+esc(D.leagues[0].name);return 'across the '+D.leagues.length+' selected leagues'}
 // same-NFL-team correlation (QB <-> pass-catcher stacks across the two sides of a matchup): a Gibbs TD catch also feeds your Goff,
 // so rooting against Gibbs is partly offset. Light, fixed factors: RB x0.8, WR/TE x0.6 when the other side starts their QB; QB x0.75 when the other side starts his pass-catchers.
 var STACK_F={RB:0.8,WR:0.6,TE:0.6};
@@ -404,19 +417,20 @@ function renderSunday(el){
   var cardsH=cards.map(function(c){var h=scoreCard(c,PREV[c.L.id]);PREV[c.L.id]=[c.me.lines.some(function(l){return l.state!=='pre'})||c.op.lines.some(function(l){return l.state!=='pre'})?c.me.actSum:c.me.proj,c.me.lines.some(function(l){return l.state!=='pre'})||c.op.lines.some(function(l){return l.state!=='pre'})?c.op.actSum:c.op.proj];return h}).join('');
   var rec=cards.reduce(function(a,c){a.x+=c.me.odds;return a},{x:0});
   // slot chips
-  var cnt={all:0};M.players.forEach(function(P){if(Math.abs(P.key)<1e-4)return;cnt.all++;cnt[P.line.slot]=(cnt[P.line.slot]||0)+1});
+  var rootPs=M.players.map(scopeRootPlayer).filter(Boolean);
+  var cnt={all:0};rootPs.forEach(function(P){if(Math.abs(P.key)<1e-4)return;cnt.all++;cnt[P.line.slot]=(cnt[P.line.slot]||0)+1});
   var chips='<div class="chips" id="chips">'+[['all','All']].concat(SLOTS).filter(function(s){return s[0]==='all'||cnt[s[0]]}).map(function(s){var st=s[0]==='all'?'':slotState(s[0]);return '<button class="chip'+(UI.slot===s[0]?' on':'')+'" data-s="'+s[0]+'">'+s[1]+'<span class="c"> '+(cnt[s[0]]||0)+'</span>'+(st==='live'?'<span class="st">● LIVE</span>':st==='fin'?'<span class="st fin">✓</span>':'')+'</button>'}).join('')+'</div>';
   var POS=['all','QB','RB','WR','TE'],posOf=function(P){var pi=P.line.pi;return pi.pos||((pi.fp||[])[0])};
   chips+='<div class="chips" id="pchips">'+POS.map(function(p){return '<button class="chip'+(UI.pos===p?' on':'')+'" data-p="'+p+'">'+(p==='all'?'All pos':p)+'</button>'}).join('')+'<span style="flex:0 0 8px"></span>'+[['both','For + Against'],['for','Root For'],['ag','Root Against']].map(function(x){return '<button class="chip'+(UI.side===x[0]?' on':'')+'" data-sd="'+x[0]+'">'+x[1]+'</button>'}).join('')+'</div>';
-  var inSlot=M.players.filter(function(P){return Math.abs(P.key)>=1e-4&&(UI.slot==='all'||P.line.slot===UI.slot)&&(UI.pos==='all'||posOf(P)===UI.pos)});
+  var inSlot=rootPs.filter(function(P){return Math.abs(P.key)>=1e-4&&(UI.slot==='all'||P.line.slot===UI.slot)&&(UI.pos==='all'||posOf(P)===UI.pos)});
   var fr=inSlot.filter(function(P){return P.key>0}).sort(function(a,b){return (a.done-b.done)||b.key-a.key}),ag=inSlot.filter(function(P){return P.key<0}).sort(function(a,b){return (a.done-b.done)||a.key-b.key});
   // conflicts: full (net) row in the net list + a compact mirror row in the other list, so "your starter" never disappears from Root For
   var sgn=function(P,pos){return P.ent.some(function(e){var x=P.done?e.base:e.imp;return pos?x>5e-4:x<-5e-4})};
   var frM=inSlot.filter(function(P){return P.conf&&P.key<0&&sgn(P,1)}),agM=inSlot.filter(function(P){return P.conf&&P.key>0&&sgn(P,0)});frM.forEach(function(P){P._m=1});agM.forEach(function(P){P._m=1});
   fr=fr.concat(frM.map(function(P){return {mirror:P}}));ag=ag.concat(agM.map(function(P){return {mirror:P}}));
-  var max=Math.max.apply(null,[0.01].concat(M.players.map(function(P){return Math.abs(P.key)})));
+  var max=Math.max.apply(null,[0.01].concat(rootPs.map(function(P){return Math.abs(P.key)})));
   function lst(arr,cls,title){var lim=UI.all[cls]?arr.length:15,more=arr.length-lim;return '<div class="list '+cls+'"><div class="lh '+cls+'">'+title+'<span>'+arr.length+' players</span></div>'+(arr.length?arr.slice(0,lim).map(function(P){return P.mirror?rowHTML(P.mirror,cls,max,true):rowHTML(P,cls,max)}).join(''):'<div class="empty">Nobody in this slot.</div>')+(more>0?'<button class="chip more" data-more="'+cls+'" style="margin:8px auto;display:block">Show '+more+' more</button>':'')+'</div>'}
-  var conf=M.players.filter(function(P){return P.conf}).sort(function(a,b){return Math.abs(b.key)-Math.abs(a.key)});
+  var conf=rootPs.filter(function(P){return P.conf}).sort(function(a,b){return Math.abs(b.key)-Math.abs(a.key)});
   var confH=conf.length?conf.map(function(P){return '<div class="flag"><div class="ic">'+head(P.id)+'</div><div class="fx"><div class="ft">'+esc(P.line.pi.n)+' <span class="pill '+(P.key>=0?'g':'r')+'">'+(P.key>=0?'ROOT FOR':'ROOT AGAINST')+'</span> <span class="muted small">net '+(P.key>=0?'+':'−')+f1(Math.abs(P.key)*100)+'%</span></div><div class="small muted">'+P.ent.map(function(e){var s=P.done?e.base:e.imp;return '<span class="'+(s>=0?'pe':'ne')+'">'+(s>=0?'+':'−')+f1(Math.abs(s)*100)+'%</span> '+esc(e.L.name)+' ('+esc(e.tag)+')'}).join(' · ')+'</div></div></div>'}).join(''):'<div class="empty">No conflicts this week. Clean conscience.</div>';
   var flags=M.flags.slice().sort(function(a,b){var o={hi:0,md:1,lo:2};return o[a.sev]-o[b.sev]});
   var CC={2:'g',1:'y',0:''};
@@ -430,7 +444,7 @@ function renderSunday(el){
   var pkH=pk.length?'<section class="panel"><h2>🎯 Pick Watch <small><a href="#picks">ALL PICKS →</a></small></h2><div class="hint">Teams whose picks you own: a loss and a low max PF (best possible lineup, bench included) both move your pick earlier. Reference only; not part of the Rooting Guide.</div>'+(window.PWV?(function(){var cs=PWV.cards();return '<div class="small" style="margin:4px 0 8px">'+PWV.summary(cs)+'</div><div class="pwg">'+cs.slice(0,3).map(function(t){return PWV.card(t)}).join('')+'</div>'+(cs.length>3?'<a class="small" href="#live">+'+(cs.length-3)+' more on Live →</a>':'')})():pk.slice(0,4).map(pickRow).join(''))+pickRootHTML(pk,true)+'</section>':'';
   el.innerHTML=banner+callsSec+'<section class="panel"><h2>📺 Scoreboard <small>'+cards.length+' LEAGUES · EXP. WINS '+f1(rec.x)+'</small></h2><div class="sbs">'+cardsH+'</div><div class="hint" style="margin-top:6px">Tap a card for both lineups. Sorted by closest game. '+(isWindow()?'Auto-refreshing every 60s.':'Auto-refresh kicks in during game windows.')+'</div></section>'+
    newsStripHTML()+
-   '<section class="panel"><h2>📣 Rooting Guide <small>WEEK '+D.week+'</small></h2>'+chips+'<div class="cols">'+(UI.side!=='ag'?lst(fr,'for','ROOT FOR'):'')+(UI.side!=='for'?lst(ag,'ag','ROOT AGAINST'):'')+'</div><div class="hint">Head-to-head only: your starters are Root For, your opponents\' starters are Root Against. Impact = projected points still to come × how close that matchup is (win-probability swing), summed across leagues. Pick Watch and Rival Watch stay in their own sections and don\'t move this list.</div></section>'+
+   '<section class="panel"><h2>📣 Rooting Guide <small>WEEK '+D.week+'</small></h2>'+chips+'<div class="cols">'+(UI.side!=='ag'?lst(fr,'for','ROOT FOR'):'')+(UI.side!=='for'?lst(ag,'ag','ROOT AGAINST'):'')+'</div><div class="hint">Head-to-head only: your starters are Root For, your opponents\' starters are Root Against. Impact = projected points still to come × how close that matchup is (win-probability swing), '+rootSumPhrase()+'. Pick Watch and Rival Watch stay in their own sections and don\'t move this list.</div></section>'+
    '<section class="panel"><h2>⚔️ Conflicts</h2>'+confH+'</section>'+
    pkH+skippedHTML();
   $$('#chips .chip',el).forEach(function(b){b.onclick=function(){UI.slot=b.getAttribute('data-s');renderSunday(el)}});
