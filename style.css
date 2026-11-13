@@ -238,3 +238,15 @@ body.cc-on #lgf{display:none}
 /* round 5: Coaches Corner live tiles + stale banner */
 .cclv{font-style:normal;font-size:9px;color:#5be37d;letter-spacing:.08em;margin-left:4px}
 .ccstale{margin:10px 0;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,199,44,.45);background:rgba(255,199,44,.08);font-size:13px;line-height:1.4}
+/* round 5: standings, player finder, key dates */
+.stbox{margin:0 0 12px}.sth{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 10px;margin-bottom:6px}.sth h3{margin:2px 0}
+.stt td,.stt th{padding:6px 5px;text-align:right;white-space:nowrap}.stt td.w,.stt th.w{text-align:left;white-space:normal}.stt td:first-child,.stt th:first-child{text-align:center;width:22px}
+.stt tr.me td{background:rgba(255,199,44,.10)}.stt tr.me td.w .stn{color:var(--gold);font-weight:700}
+.stt tr.pline td{border-bottom:2px solid rgba(255,199,44,.75)}
+.stn{display:inline-block;max-width:150px;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;white-space:nowrap}
+@media(max-width:640px){.stt .dsk{display:none}.stn{max-width:112px}.stt td,.stt th{padding:6px 3px;font-size:12px}}
+.kd{display:flex;flex-direction:column;gap:2px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px}.kd:last-child{border-bottom:0}.kd .gold{color:var(--gold)}.kd .ne{font-weight:700}
+.dlalert{margin:0 0 12px;border-color:rgba(255,107,107,.55);background:rgba(255,107,107,.08);font-size:13.5px;line-height:1.45}
+.pfq{width:100%;box-sizing:border-box;height:46px;border-radius:12px;border:1px solid rgba(255,199,44,.45);background:rgba(0,0,0,.35);color:var(--ink);padding:0 14px;font-size:16px;margin-top:6px}
+.pft{display:flex;gap:10px;align-items:center;margin:8px 0 10px}.pft .hs{width:52px;height:52px}
+.pfrow{margin:0 0 8px}.pfh{display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 8px;margin-bottom:4px}
