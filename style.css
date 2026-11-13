@@ -235,3 +235,6 @@ body.cc-on #lgf{display:none}
 @keyframes ccpulse{0%,100%{opacity:1}50%{opacity:.55}}
 @media (max-width:640px){.cchost{flex-basis:118px;min-height:0}.cchb{padding:12px 12px 12px 8px}.cchero h2{font-size:20px}.cctile{flex-basis:70px;padding:6px 7px}.cctile b{font-size:16px}.cctile:last-child{flex-basis:100%}.ccq{font-size:13px}}
 @media (prefers-reduced-motion:reduce){.cchero,.cctile,.ccs,.cclive{-webkit-animation:none!important;animation:none!important}}
+/* round 5: Coaches Corner live tiles + stale banner */
+.cclv{font-style:normal;font-size:9px;color:#5be37d;letter-spacing:.08em;margin-left:4px}
+.ccstale{margin:10px 0;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,199,44,.45);background:rgba(255,199,44,.08);font-size:13px;line-height:1.4}

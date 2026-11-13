@@ -26,7 +26,8 @@ LONG = {'IR', 'PUP', 'Sus', 'NA', 'DNR', 'COV'}
 FIX = {'WSH': 'WAS', 'LA': 'LAR', 'JAC': 'JAX'}
 ELIG = {'QB': ['QB'], 'RB': ['RB'], 'WR': ['WR'], 'TE': ['TE'], 'K': ['K'], 'DEF': ['DEF'], 'FLEX': ['RB', 'WR', 'TE'], 'WRRB_FLEX': ['RB', 'WR'],
         'REC_FLEX': ['WR', 'TE'], 'SUPER_FLEX': ['QB', 'RB', 'WR', 'TE']}
-ET = datetime.timezone(datetime.timedelta(hours=-4))  # display only
+from zoneinfo import ZoneInfo
+ET = ZoneInfo("America/New_York")  # display only, DST-aware
 
 def get(url, timeout=60):
     sep = '&' if '?' in url else '?'
@@ -77,9 +78,11 @@ def main():
             try:
                 sm = get('https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event=' + g['id'])
                 for T in sm.get('injuries') or []:
+                    ta = ((T.get('team') or {}).get('abbreviation') or ''); ta = FIX.get(ta, ta)
                     for i in T.get('injuries') or []:
                         if re.match(r'^out$', i.get('status') or '', re.I):
-                            a = i.get('athlete') or {}; espn_out[str(a.get('id'))] = 1; espn_out['n:' + norm(a.get('displayName'))] = 1
+                            a = i.get('athlete') or {}; espn_out[str(a.get('id'))] = 1
+                            if ta: espn_out['n:' + ta + ':' + norm(a.get('displayName'))] = 1
             except Exception: pass
     except Exception: pass
     def status(pid):
@@ -90,7 +93,7 @@ def main():
             if not s and (db.get('i') in LONG or db.get('s') == 'Inactive'): s, so = db.get('i') or 'Inactive', 'Sleeper players file'
         else:
             s, so = db.get('i') or ('Inactive' if db.get('s') == 'Inactive' else None), 'Sleeper players file'
-        if s not in LONG and s not in ('Out', 'Inactive') and (espn_out.get(str(db.get('e'))) or espn_out.get('n:' + norm(db.get('n')))): s, so = 'Out', 'ESPN game-day'
+        if s not in LONG and s not in ('Out', 'Inactive') and (espn_out.get(str(db.get('e'))) or (not db.get('e') and espn_out.get('n:' + (db.get('t') or '?') + ':' + norm(db.get('n'))))): s, so = 'Out', 'ESPN game-day'
         team = pr.get('team') or db.get('t')
         if not team: return ('NO TEAM', 'Sleeper')
         if not s and (team in byes or (games and team not in games)): return ('BYE', 'ESPN schedule')

@@ -23,6 +23,15 @@ var HOST={
  f2020:{n:'Scarlett Reyes',r:'Field Reporter',c:'red',need:'RB vs. olis1mao',q:'Deadline is Week 11, handsome. Don\'t keep me waiting.'},
  dynastyjunkies:{n:'Nia Brooks',r:'War Room Strategist',c:'green',need:'WR3 (Waddle 9.2)',q:'Six and oh looks good on you. A real WR3 would look even better.'},
  livefree:{n:'Sloane Avery',r:'Sideline Insider',c:'blue',need:'QB + RB',q:'Four firsts and you\'re starting Winston? Treat yourself.'}};
+// live numbers from Sleeper for the hero tiles (the markdown snapshot goes stale between Dynasty Guru refreshes)
+function nk(x){return String(x||'').toLowerCase().replace(/[^a-z0-9]/g,'')}
+function lgOf(k){var nm=nk((LGS.filter(function(l){return l[0]===k})[0]||[])[1]);return (D.allLeagues||D.leagues||[]).filter(function(L){return nk(L.name)===nm})[0]||null}
+function ordS(n){var s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0])}
+function liveTiles(){var L=lgOf(CUR);if(!L||!L.rosters||!L.rosters[L.me])return null;try{var st=standings(L)[L.me],se=L.raw.settings||{},rs=L.rosters[L.me].settings||{},dl=+se.trade_deadline||0;
+  return {rec:st.w+'-'+st.l+(st.t?'-'+st.t:''),pf:ordS(st.pfRank),fa:+se.waiver_type===2?'$'+((se.waiver_budget||0)-(rs.waiver_budget_used||0)):'Priority #'+(rs.waiver_position||'?'),fal:+se.waiver_type===2?'FAAB':'Waivers',
+    dl:dl?(D.week>dl?'Passed (Wk '+dl+')':D.week===dl?'Week '+dl+' · NOW':'Week '+dl+' · '+(dl-D.week)+' wk'+(dl-D.week>1?'s':'')):'None'}}catch(e){return null}}
+function stale(intro){var m=/pulled live\s+(?:\w+\s+)?([A-Z][a-z]{2,8}\s+\d{1,2},\s+\d{4})/.exec(intro.join(' '));if(!m)return '';var t=Date.parse(m[1]);if(!t)return '';var d=Math.floor((Date.now()-t)/864e5);if(d<6)return '';
+  var wk=/Week\s+(\d+)/.exec(intro.join(' '));return '<div class="ccstale">📅 Game plan written <b>'+esc(m[1].replace(/,\s+\d{4}/,''))+'</b> ('+(d>=14?Math.round(d/7)+' weeks':d+' days')+' ago). Record, PF rank, '+'waivers and deadline up top are <b>live</b>; trade and start/sit advice below may be out of date until Dynasty Guru refreshes it.</div>'}
 function sec(secs,re){return secs.filter(function(s){return re.test(s.h)})[0]}
 function grade(v){return v>=5?'A':v>=0?'B':v>-5?'C':v>-10?'D':'F'}
 function hero(title,secs){var H=HOST[CUR]||{},snap=sec(secs,/^Snapshot/),t=snap?snap.b.join('\n'):'',m;
@@ -30,16 +39,17 @@ function hero(title,secs){var H=HOST[CUR]||{},snap=sec(secs,/^Snapshot/),t=snap?
   var vs=sec(secs,/ vs /),gr='';
   if(vs){vs.b.filter(function(l){return /^\s*\|/.test(l)&&!/^\s*\|[\s:|-]+\|\s*$/.test(l)}).slice(1).forEach(function(r){var c=cells(r),e=c[c.length-1],mm=/(\S+)\s*\+([0-9.]+)/.exec(e);if(!mm)return;var v=parseFloat(mm[2])*(/^Brett/.test(e)?1:-1),g=grade(v);
     gr+='<span class="ccg g'+g+'"><b>'+g+'</b>'+esc(c[0].replace(/ x[0-9]/,''))+'</span>'})}
-  var tiles=[['Record',rec],['PF rank',pf],['FAAB',fa],['Deadline',dl],['Biggest need',H.need||'—']];
+  var lv=liveTiles();if(lv){rec=lv.rec;pf=lv.pf;fa=lv.fa;dl=lv.dl}
+  var tiles=[['Record',rec,lv],['PF rank',pf,lv],[lv?lv.fal:'FAAB',fa,lv],['Deadline',dl,lv],['Biggest need',H.need||'—']];
   return '<section class="cchero t-'+(H.c||'navy')+'"><div class="cchost"><img src="img/host_'+CUR+'.jpg?v=1" alt="Illustrated sideline analyst" width="240" height="320"><span class="cclive">● ON AIR</span></div>'+
    '<div class="cchb"><div class="cckick">🧠 COACHES CORNER · WAR ROOM</div><h2>'+inl(title)+'</h2>'+
-   '<div class="cctiles">'+tiles.map(function(x,i){return '<div class="cctile" style="animation-delay:'+(i*60)+'ms"><small>'+x[0]+'</small><b>'+esc(x[1])+'</b></div>'}).join('')+'</div>'+
+   '<div class="cctiles">'+tiles.map(function(x,i){return '<div class="cctile" style="animation-delay:'+(i*60)+'ms"><small>'+x[0]+(x[2]?' <i class="cclv" title="live from Sleeper">● LIVE</i>':'')+'</small><b>'+esc(x[1])+'</b></div>'}).join('')+'</div>'+
    (gr?'<div class="ccgr"><small>Lineup grade vs. top rival</small>'+gr+'</div>':'')+
    '<div class="ccq">“'+esc(H.q||'')+'”<span>— '+esc(H.n||'')+', '+esc(H.r||'')+'</span></div></div></section>'}
 function verdict(x){x=x.replace(/\*/g,'');return /sell|trade chip|surplus|\bcut\b|in tuna deal|rental|weak/i.test(x)?'vs':/keep|core|untouchable|^start|qb1|win-now|wr1|smash|^starter|^fine/i.test(x)?'vg':'vh'}
 function render(md){var L=md.replace(/\r/g,'').split('\n'),title='Coaches Corner',intro=[],secs=[],cur=null;
   L.forEach(function(l){if(/^# /.test(l)){title=l.slice(2);return}if(/^## /.test(l)){cur={h:l.slice(3),b:[]};secs.push(cur);return}(cur?cur.b:intro).push(l)});
-  var h=sw()+hero(title,secs)+'<section class="panel cc"><div class="box ccintro">'+block(intro)+'</div></section>';
+  var h=sw()+hero(title,secs)+stale(intro)+'<section class="panel cc"><div class="box ccintro">'+block(intro)+'</div></section>';
   secs.forEach(function(s,k){var ic=ICON[s.h]||(/trade/i.test(s.h)?'🧶':/vs/i.test(s.h)?'⚔️':/need/i.test(s.h)?'🔍':'📌');
     h+='<details style="animation-delay:'+Math.min(k*50,400)+'ms" class="panel ccs'+(/this week/i.test(s.h)?' ccnow':'')+'"'+(k<2||/trade|this week/i.test(s.h)?' open':'')+'><summary><h2>'+ic+' '+inl(s.h)+'</h2></summary>'+block(s.b)+'</details>'});
   return h+'<div class="hint">Game plan by Dynasty Guru from a live Sleeper + FantasyCalc pull (timestamp at top). Not auto-refreshed. Edit <code>data/cc_'+CUR+'.md</code> to update.</div>'}
@@ -48,7 +58,7 @@ addEventListener('hashchange',syncCls);
 function sw(){return '<div class="ccsw" id="ccsw" role="tablist"><span class="ccswl">LEAGUE</span>'+LGS.map(function(l){return '<button class="chip'+(l[0]===CUR?' on':'')+'" data-cl="'+l[0]+'">'+esc(l[1])+'</button>'}).join('')+'</div>'}
 function load(k){return fetch('data/cc_'+k+'.md?t='+new Date().toISOString().slice(0,13),{cache:'no-cache'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.text()}).then(function(t){MD[k]=t;return t})}
 function bind(el){var b=el.querySelectorAll('[data-cl]');for(var i=0;i<b.length;i++)b[i].onclick=function(){CUR=this.getAttribute('data-cl');LS.set('ccLeague',CUR);renderCC(el);window.scrollTo(0,0)}}
-function renderCC(el){syncCls();var k=CUR;if(MD[k]){el.innerHTML=render(MD[k]);bind(el);return}el.innerHTML=sw()+'<div class="spin">Loading Coaches Corner…</div>';bind(el);load(k).then(function(){if(curTab()[0]==='coach'&&CUR===k){el.innerHTML=render(MD[k]);bind(el)}}).catch(function(e){el.innerHTML=sw()+'<div class="panel err">Couldn\'t load Coaches Corner: '+esc(e.message)+'</div>';bind(el)})}
+function renderCC(el){syncCls();if(D.allLeagues&&D.leagues&&D.leagues.length===1&&D.allLeagues.length>1){var one=LGS.filter(function(l){return nk(l[1])===nk(D.leagues[0].name)})[0];if(one)CUR=one[0]}var k=CUR;if(MD[k]){el.innerHTML=render(MD[k]);bind(el);return}el.innerHTML=sw()+'<div class="spin">Loading Coaches Corner…</div>';bind(el);load(k).then(function(){if(curTab()[0]==='coach'&&CUR===k){el.innerHTML=render(MD[k]);bind(el)}}).catch(function(e){el.innerHTML=sw()+'<div class="panel err">Couldn\'t load Coaches Corner: '+esc(e.message)+'</div>';bind(el)})}
 EXTRA_TABS.push(['coach','🧠','COACHES CORNER',renderCC]);
 if(window.TAB_ORDER)TAB_ORDER[0].push('coach');
 $('#tabs').innerHTML=navHTML();

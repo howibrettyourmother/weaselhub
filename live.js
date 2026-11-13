@@ -156,6 +156,8 @@ function pwLeague(L){var st=standings(L),n=Object.keys(L.rosters).length,pt=(L.r
     if(live&&s&&o&&x.wk&&x.wk.lines){var done=s.ytp+s.live+o.ytp+o.live===0;W+=done?(s.act>o.act?1:s.act===o.act?0.5:0):(s.odds>=0.5?1:0);PF+=done?s.act:s.fin}
     return {rid:+k,W:W,PF:PF,M:live?x.mpfEnd:x.mpfEnd0}})};
   var a0=mk(false),aN=mk(true);pwOrder(a0,pt,false);pwOrder(aN,pt,true);var by={};a0.forEach(function(x){by[x.rid]={s0:x.s0,po0:x.po0}});aN.forEach(function(x){by[x.rid].sN=x.sN;by[x.rid].poN=x.poN});
+  // canonical: the season simulator (core.js via WHMC) when it has run; the quick re-rank above is only the fallback
+  ks.forEach(function(k){var x=st[k];if(x.mc&&by[k]){by[k].s0=x.slot0;by[k].sN=x.slot;by[k].po0=x.po;by[k].poN=x.poOdds>=0.5;by[k].odds=x.poOdds;by[k].lo=x.slotLo;by[k].hi=x.slotHi}});
   return {st:st,by:by,avg:avg,avgB:avgB,n:n,pt:pt,live:live}}
 function pad2(n){return (n<10?'0':'')+n}
 function pwCards(){if(!D.M)try{D.M=computeAll()}catch(e){}var M=D.M||{},teams={},lc={};(M.picks||[]).forEach(function(x){var L=x.L,k=L.id+':'+x.p.rid;if(!lc[L.id])lc[L.id]=pwLeague(L);
@@ -166,9 +168,10 @@ function pwCards(){if(!D.M)try{D.M=computeAll()}catch(e){}var M=D.M||{},teams={}
     t.done=!!(s&&o&&s.ytp+s.live+o.ytp+o.live===0);t.has=!!(s&&o&&st.wk&&st.wk.lines);
     t.res=!t.has?null:t.done?(s.act>o.act?'WON':s.act<o.act?'LOST':'TIED'):(s.act>o.act+0.05?'WINNING':s.act<o.act-0.05?'LOSING':'TIED');
     var resGood=!t.has?null:t.done?(t.res==='TIED'?null:t.res==='LOST'):s.odds<0.5;// projected result, not just the current score
-    t.resWhy=!t.has?'':t.done?(t.res==='LOST'?'the loss helps':'the win hurts'):(s.odds<0.5?'a likely loss helps':'a likely win hurts');mpfGood=t.has&&I.avg?st.wk.tot<I.avg:null;t.resGood=resGood;t.mpfGood=mpfGood;
+    t.resWhy=!t.has?'':t.done?(t.res==='LOST'?'the loss helps':'the win hurts'):(s.odds<0.5?'a likely loss helps':'a likely win hurts');t.lock=b.odds!=null&&b.odds>=0.9;mpfGood=t.has&&I.avg&&!t.lock?st.wk.tot<I.avg:null;t.resGood=resGood;t.mpfGood=mpfGood;
     t.v=resGood==null&&mpfGood==null?null:resGood==null?(mpfGood?'g':'b'):mpfGood==null?(resGood?'g':'b'):resGood===mpfGood?(resGood?'g':'b'):'m';
     return t}).sort(function(a,b){return Math.abs(b.mv)-Math.abs(a.mv)||(b.near-a.near)||(a.rd-b.rd)||((a.sN||99)-(b.sN||99))})}
+function b0(t){var b=t.I&&t.I.by[t.rid];return !!(b&&b.odds!=null)}
 function pwCard(t,full){var L=t.L,s=t.side,o=t.opp,st=t.st,I=t.I,on=ownerOf(L,t.rid).name;
   var lab=t.picks.map(function(p){return '<span class="pill y">'+esc(p.label)+'</span>'}).join(' ');
   // line 1: the watched team's own result, neutral wording and colour
@@ -181,14 +184,14 @@ function pwCard(t,full){var L=t.L,s=t.side,o=t.opp,st=t.st,I=t.I,on=ownerOf(L,t.
   var vt=t.v==='g'?'<b class="pe">✅ Good for your pick</b> <span class="small">· '+[rP,mP].filter(Boolean).join(' + ')+'</span>':t.v==='b'?'<b class="ne">❌ Bad for your pick</b> <span class="small">· '+[rP,mP].filter(Boolean).join(' + ')+'</span>':
     t.v==='m'?'<b style="color:var(--gold)">⚖️ Mixed</b> <span class="small">· '+rP+(t.resGood?' helps':' hurts')+', '+mP+(t.mpfGood?' helps':' hurts')+(t.mv?' · net: pick '+(t.mv>0?'better':'worse'):'')+'</span>':'';
   var pk='';if(t.near&&t.sN){var nm=function(x){return t.rd+'.'+pad2(x)},d=t.mv;
-    pk='<div class="pwp">Projected pick <b>'+nm(t.sN)+'</b> <span class="muted">'+(d?'('+(d>0?'▲ earlier':'▼ later')+' than '+nm(t.s0)+' before this week)':'· unchanged this week')+(t.poN?' · in a playoff spot, so picks late':'')+'</span></div>'}
+    pk='<div class="pwp">Projected pick <b>'+nm(t.sN)+'</b> <span class="muted">'+(d?'('+(d>0?'▲ earlier':'▼ later')+' than '+nm(t.s0)+' before this week)':'· unchanged this week')+(b0(t)?' · playoff odds '+Math.round(t.I.by[t.rid].odds*100)+'%'+(t.lock?', so it picks late (set by playoff finish)':''):t.poN?' · in a playoff spot, so picks late':'')+(t.I.by[t.rid]&&t.I.by[t.rid].lo&&t.I.by[t.rid].hi&&t.I.by[t.rid].lo!==t.I.by[t.rid].hi?' · likely range '+nm(t.I.by[t.rid].lo)+'–'+nm(t.I.by[t.rid].hi):'')+'</span></div>'}
   else pk='<div class="pwp muted">'+esc(t.picks[0].season)+' pick: order set by next season\'s max PF</div>';
-  var mp=t.has?'<div class="small muted">Max PF this week <b style="color:var(--ink)">'+Math.round(st.wk.act||0)+'</b>'+(t.done?'':' banked · ~'+Math.round(st.wk.tot)+' proj')+' vs league avg '+Math.round(I.avg)+' (lower = better pick)</div>':'';
+  var mp=t.has?'<div class="small muted">Max PF this week <b style="color:var(--ink)">'+Math.round(st.wk.act||0)+'</b>'+(t.done?'':' banked · ~'+Math.round(st.wk.tot)+' proj')+' vs league avg '+Math.round(I.avg)+(t.lock?' (doesn\'t matter: they\'re a playoff lock)':' (lower = better pick)')+'</div>':'';
   var sea=full?'<div class="small muted">Season: max PF '+int0(st.mpf)+' ('+ordn(st.mpfRank)+' lowest of '+I.n+') · on pace for '+int0(st.mpfEnd)+' · '+st.w+'-'+st.l+(st.t?'-'+st.t:'')+' (#'+st.rank+')</div>':'';
   return '<a class="pwc'+(t.done?' fin':'')+' v'+(t.v||'n')+'" href="'+(full?'#live':'#picks')+'"><div class="ft">'+lab+' <span class="muted small">'+esc(L.name)+'</span>'+(t.done?' <span class="pwf">FINAL</span>':'')+'</div>'+mu+(vt?'<div class="pwv">'+vt+'</div>':'')+pk+mp+sea+'</a>'}
 function pwSummary(cs){var wk=cs.filter(function(t){return t.has}),good=wk.filter(function(t){return t.v==='g'}).length,bad=wk.filter(function(t){return t.v==='b'}).length,mix=wk.filter(function(t){return t.v==='m'}).length;
   return wk.length?'<b class="pe">'+good+' of '+wk.length+'</b> pick teams having a bad week (good for your picks)'+(bad?' · <span class="ne">'+bad+' having a good week (bad for your picks)</span>':'')+(mix?' · '+mix+' mixed':''):'No pick-team matchups this week.'}
-var PWINFO='Rookie draft order = max PF (best possible lineup points, bench included): non-playoff teams pick first, lowest max PF first; playoff teams pick last. So a pick team <b>losing</b> (falls toward missing the playoffs) and scoring a <b>low max PF</b> both move your pick earlier. "Projected" re-ranks the league live: this week\'s likely winners (actual result once final) and max PF banked + projected, versus the projection before this week.';
+var PWINFO='Rookie draft order = max PF (best possible lineup points, bench included): non-playoff teams pick first, lowest max PF first; playoff teams pick last. So a pick team <b>losing</b> (falls toward missing the playoffs) and scoring a <b>low max PF</b> both move your pick earlier. "Projected" comes from the same 3,000-season simulation as Standings and the Draft tab (live scores this week, the real remaining schedule, a simulated playoff bracket for playoff teams), versus the same simulation run on pre-week projections. Teams with 90%+ playoff odds are treated as locks: their max PF stops mattering.';
 function pickPanel(){var cs=pwCards();if(!cs.length)return '';var sum=pwSummary(cs);
   return '<section class="panel"><details class="pwd"'+(PWO?' open':'')+'><summary><h2 style="margin:0">🎯 Pick Watch <small>'+cs.length+' TEAMS</small> <span class="pwx">▾</span></h2><div class="small" style="margin-top:4px">'+sum+'</div></summary>'+
     '<details class="inf"><summary class="small muted">ⓘ How this works</summary><div class="small muted">'+PWINFO+' Tap a card for the full Pick Watch.</div></details>'+
