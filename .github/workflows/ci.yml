@@ -1,0 +1,21 @@
+name: checks
+on:
+  push:
+    branches: [main]
+    paths: ['**.js', 'index.html', 'tests/**', '.github/workflows/ci.yml']
+  pull_request:
+  workflow_dispatch:
+jobs:
+  js:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: syntax check every script
+        run: for f in *.js; do node --check "$f" || exit 1; done
+      - name: every script in index.html exists
+        run: grep -o 'src="[a-z0-9]*\.js' index.html | cut -d'"' -f2 | xargs -I{} test -f {}
+      - name: simulator unit tests
+        run: node tests/core.test.js
