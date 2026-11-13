@@ -1,130 +1,132 @@
 # SHADYNASTY: Wilson Weasels
 
-12 teams, Superflex, full PPR, 4-pt pass TD, no kickers. Data pulled live Thu Oct 22, 2026 9:42 PM ET (Sleeper + FantasyCalc 12-team Superflex). **6-0, the only unbeaten team.** The lineup hole is WR3 and RB2, and the Tuna deal fixes WR3 today.
+12 teams, Superflex, full PPR, 4-pt pass TD, no kickers. Data pulled live Thu Nov 12, 2026 9:15 PM ET (Sleeper + FantasyCalc 12-team Superflex + FantasyPros ROS). **9-0, the only unbeaten team, one game up on Ramrod (8-1) for the 1 seed.** Your lineup now projects ahead of Badfish's. The remaining hole is RB2/FLEX, and Week 11 is a six-player bye week, so buy the RB before then. Lamar is on IR but **not ruled out for the season**.
 
 ## This week
-- **Send now (TheTunaSquad):** Rome Odunze + Pat Freiermuth for **Isaiah Likely + Jalen Coker**. Open with the upside ask first: **Coker + Tuna's own 2027 1st** (projected 1.03). Keep Mac Jones out of every version.
-- **Start/sit (Week 7, leading DetroitDumpsterFire 1.6-0.0):** Lamar (Q) only if he is active Sunday, over Stroud (Lamar 19.8 PPG, Stroud 18.4). Waddle (Q, 9.2) and Odunze (8.0) are the weakest starters. Kamara (Q, 10.5) is the swap if Waddle sits.
-- **Waiver:** Jakobi Meyers (WR, JAX, 10.1 PPG, best free agent) for $15-20 of your $50. Drop PHI DST (4.0 PPG).
-- **Week 8 warning:** McCaffrey, Stroud, Kamara, Mac Jones and Aiyuk all have byes (SF/HOU/NO), and it's the Badfish game. RB2 falls to Henderson (5.7 PPG). The Tuna trade puts Likely (18.1) in FLEX that week.
+- **Send now (BamaGradLeague):** Rome Odunze + TreVeyon Henderson for **Bucky Irving**. That's 4,607 for 4,260 in FantasyCalc. Irving is 24 and projects 17.9 PPG the rest of the way (Derek Brown RB12, Fitzmaurice RB11).
+- **Week 10 lineup (vs AdamDenver, trailing 0.0-10.5 after TNF):** Hockenson (Q, wrist/chest) missed Wednesday's and Thursday's practice and is in FLEX. If he's ruled out, use Jakobi Meyers (9.8 projected, Q ankle) or Freiermuth (8.9). Rodgers at SF (17.8 projected) over Stroud (17.1) is fine this week. From Week 11 on, Stroud is the better SF (18.9 vs 15.3 ROS).
+- **Waiver ($25 FAAB):** Nothing on the wire moves the needle. Keep the FAAB for an injury fill-in. If the Irving deal stalls, bid $1-2 on Ty Johnson (BUF) as a Week 11 RB body.
+- **Statuses:** Henderson (out, neurological illness, no timeline), Waddle (concussion protocol, targeting Nov 22), Lamar (IR, thumb surgery, 6-9 weeks).
 
 ## Snapshot
-- **Record / PF / Max PF:** 6-0, 994.6 PF (3rd), 1,152.2 max PF (3rd)
-- **FAAB:** $50 of $100
+- **Record / PF / Max PF:** 9-0, 1,520.3 PF (2nd), 1,737.6 max PF (2nd)
+- **FAAB:** $25 of $100
 - **Lineup:** QB, 2 RB, 3 WR, TE, 2 FLEX, SUPER_FLEX, DEF. No kickers
 - **Deadline / playoffs:** Week 14 / 6 teams, Weeks 15-17
-- **Injury tags:** Q: Lamar, Judkins, Rice, Waddle, Kelce, Hockenson, Kamara. IR: Price, Etienne. DNR: Aiyuk. Tyreek Hill: no NFL team
+- **Injury tags:** Q: Hockenson, Meyers. Out: Henderson, Waddle. IR: Lamar (thumb), Etienne (hamstring). Tyreek Hill: no NFL team
 
 ## Standings
 | Team | W-L | PF | Max PF | FAAB |
 |---|---|---|---|---|
-| Wilson Weasels (Brett) | 6-0 | 994.6 | 1,152.2 | $50 |
-| Badfish (ManBearPig1984) | 5-1 | 1,047.9 | 1,239.1 | $84 |
-| Ramrod (Ramrod248) | 5-1 | 1,004.7 | 1,164.8 | $79 |
-| Excessive Celebration (AdamDenver) | 4-2 | 920.3 | 1,075.0 | $95 |
-| Still Renovating (ElJefe1985) | 4-2 | 916.9 | 1,057.6 | $94 |
-| SaquonMyPickens (MyChubbHurts21) | 4-2 | 906.0 | 1,047.7 | $55 |
-| Bigmike9193 | 3-3 | 885.5 | 1,033.5 | $83 |
-| Tet McMuffins (moreho15) | 3-3 | 817.8 | 992.3 | $8 |
-| TheTunaSquad | 1-5 | 621.4 | 741.3 | $100 |
-| A new dawn rising (BamaGradLeague) | 1-5 | 590.2 | 803.3 | $100 |
-| DetroitDumpsterFire | 0-6 | 542.4 | 672.1 | $96 |
-| Rebuilding Morehouse’s (joebags85) | 0-6 | 440.0 | 596.3 | $63 |
+| Wilson Weasels (Brett) | 9-0 | 1,520.3 | 1,737.6 | $25 |
+| Ramrod (Ramrod248) | 8-1 | 1,500.3 | 1,718.2 | $0 |
+| Badfish (ManBearPig1984) | 7-2 | 1,541.8 | 1,810.1 | $59 |
+| Still Renovating (ElJefe1985) | 7-2 | 1,393.9 | 1,584.4 | $92 |
+| Excessive Celebration (AdamDenver) | 5-4 | 1,295.2 | 1,520.5 | $45 |
+| Tet McMuffins (moreho15) | 5-4 | 1,276.8 | 1,512.7 | $7 |
+| SaquonMyPickens (MyChubbHurts21) | 5-4 | 1,257.8 | 1,486.2 | $55 |
+| Bigmike9193 | 3-6 | 1,212.8 | 1,436.0 | $83 |
+| A new dawn rising (BamaGradLeague) | 3-6 | 1,022.3 | 1,325.5 | $100 |
+| TheTunaSquad | 1-8 | 906.6 | 1,085.0 | $54 |
+| DetroitDumpsterFire | 1-8 | 784.3 | 976.1 | $96 |
+| Rebuilding Morehouse’s (joebags85) | 0-9 | 679.4 | 858.1 | $0 |
 
 ## Roster audit
-| Pos | Player | Age | FC | PPG | Call |
+| Pos | Player | Age | FC | ROS | Call |
 |---|---|---|---|---|---|
-| QB | Lamar Jackson (Q) | 29 | 6,906 | 19.8 | Core |
-| QB | Patrick Mahomes | 31 | 5,489 | 19.4 | Starter |
-| QB | C.J. Stroud | 25 | 4,279 | 18.4 | SF starter. Keep |
-| QB | Deshaun Watson | 31 | 1,543 | 14.1 | Bye cover (Week 8) |
-| QB | Mac Jones | 28 | 639 | -0.2 | Keep (Brett's call) |
-| RB | Christian McCaffrey | 30 | 4,578 | 20.2 | Win-now RB1 |
-| RB | Quinshon Judkins (Q) | 22 | 2,732 | 11.3 | Core, underperforming |
-| RB | Jadarian Price (IR) | 23 | 2,405 | 4.0 | Stash / trade chip |
-| RB | TreVeyon Henderson | 24 | 2,378 | 5.7 | Sell for production |
-| RB | Travis Etienne Jr. (IR) | 27 | 1,982 | 10.3 | Depth when back |
-| RB | Alvin Kamara (Q) | 31 | 1,070 | 10.5 | Bye fill-in |
-| WR | Jaxon Smith-Njigba | 24 | 9,800 | 27.5 | Untouchable |
-| WR | CeeDee Lamb | 27 | 6,656 | 21.9 | WR1b |
-| WR | Rashee Rice (Q) | 26 | 2,866 | 9.5 | Hold |
-| WR | Rome Odunze | 24 | 2,336 | 8.0 | **Selling (Tuna deal)** |
-| WR | Jaylen Waddle (Q) | 27 | 2,258 | 9.2 | WR3 until upgraded |
-| TE | Brock Bowers | 23 | 7,789 | 20.3 | Untouchable. Bye Week 13 |
-| TE | Travis Kelce (Q) | 37 | 1,602 | 12.4 | Rental. Trade chip |
-| TE | T.J. Hockenson (Q) | 29 | 1,438 | 9.8 | Trade chip |
-| TE | Pat Freiermuth | 27 | 1,375 | 10.6 | In Tuna deal |
-| Taxi | Taylen Green, Sarratt, Bryce Lance, Hibner | — | 80-354 | — | Fringe |
-| Stash | Tyreek Hill (FA), Aiyuk (DNR) | — | 697 / 269 | — | Free lottery tickets |
+| QB | Patrick Mahomes | 31 | 5,388 | 19.4 | Starter |
+| QB | C.J. Stroud | 25 | 4,955 | 18.9 | SF starter. Keep (overpay only) |
+| QB | Aaron Rodgers | 42 | 1,549 | 15.3 | Bye cover / SF3 |
+| QB | Deshaun Watson | 31 | 1,589 | 15.1 | Surplus. Trade chip |
+| QB | Lamar Jackson (IR) | 29 | 5,499 | — | Core. Hold on IR; possible Week 16-17 return |
+| QB | Mac Jones | 28 | 945 | — | Keep (Brett's stash) |
+| RB | Christian McCaffrey | 30 | 4,357 | 20.6 | Win-now RB1 |
+| RB | Quinshon Judkins | 23 | 2,551 | 11.5 | Core, underperforming. Bye Week 11 |
+| RB | Travis Etienne Jr. (IR) | 27 | 2,110 | 10.5 | Depth when back |
+| RB | Jadarian Price | 23 | 2,548 | 8.0 | Stash / trade chip |
+| RB | Alvin Kamara | 31 | 999 | 5.7 | Bye fill-in only |
+| RB | TreVeyon Henderson (Out) | 24 | 2,029 | — | **Selling (Irving deal)** |
+| WR | Jaxon Smith-Njigba | 24 | 10,166 | 25.2 | Untouchable. Bye Week 11 |
+| WR | CeeDee Lamb | 27 | 6,869 | 19.5 | WR1b. Bye Week 14 |
+| WR | Rashee Rice | 26 | 2,798 | 14.6 | Starter |
+| WR | Jaylen Waddle (Out) | 27 | 1,895 | 13.1 | Hold. Back as soon as Week 11 |
+| WR | Rome Odunze | 24 | 2,578 | 12.5 | **Selling (Irving deal)** |
+| WR | Jakobi Meyers (Q) | 30 | 1,341 | 9.6 | Bye cover |
+| TE | Brock Bowers | 23 | 8,053 | 17.7 | Untouchable. Bye Week 13 |
+| TE | Travis Kelce | 37 | 1,602 | 12.3 | Rental. Start in FLEX, sell in the offseason |
+| TE | T.J. Hockenson (Q) | 29 | 1,694 | 11.9 | FLEX when healthy |
+| TE | Pat Freiermuth | 28 | 1,231 | 7.8 | Trade chip |
+| DEF | JAX / LAR | — | — | 7.2 / 6.4 | JAX for the playoffs |
+| Taxi | Sarratt, Hibner, Bryce Lance | — | 278-432 | — | Fringe |
+| Stash | Tyreek Hill (FA) | 31 | 456 | — | Keep (intentional stash) |
 
-## Weasels vs Badfish (top rival), PPG
+## Weasels vs Badfish (top rival), ROS PPG
 | Slot | Brett | Badfish | Edge |
 |---|---|---|---|
-| QB / SF | Mahomes 19.4 / Stroud 18.4 | Allen 26.9 / Bryce Young 22.5 | Badfish +11.6 |
-| RB1 / RB2 | McCaffrey 20.2 / Judkins 11.3 | Bijan 21.1 / Kyren Williams 19.7 | Badfish +9.3 |
-| WR1 / WR2 | JSN 27.5 / Lamb 21.9 | Puka 23.0 (Q) / Flowers 18.9 | Brett +7.5 |
-| WR3 | Waddle 9.2 | DeVonta Smith 17.3 (Q) | Badfish +8.1 |
-| TE | Bowers 20.3 | Fannin 8.9 | Brett +11.4 |
-| FLEX x2 | Kelce 12.4 / Odunze 8.0 | P. Washington 15.2 / Chase 16.0 | Badfish +10.8 |
-- After the Tuna deal, the FLEX/WR3 gap shrinks: Likely 18.1 and Coker 16.7 replace Odunze 8.0 and Waddle 9.2. That's about +17.6 PPG.
+| QB / SF | Mahomes 19.4 / Stroud 18.9 | Allen 24.0 / Dak 18.3 | Badfish +4.0 |
+| RB1 / RB2 | McCaffrey 20.6 / Judkins 11.5 | Bijan 20.3 / Kyren Williams 15.5 | Badfish +3.7 |
+| WR1 / WR2 | JSN 25.2 / Lamb 19.5 | Chase 18.7 / Flowers 16.2 | Brett +9.8 |
+| WR3 | Rice 14.6 | Parker Washington 15.4 | Badfish +0.8 |
+| TE | Bowers 17.7 | Fannin 11.3 (Q) | Brett +6.4 |
+| FLEX x2 | Kelce 12.3 / Odunze 12.5 | Godwin 9.1 / Hampton 9.0 | Brett +6.7 |
+- Net Brett is about +14 PPG, and DeVonta Smith is out for Badfish. Irving in place of Judkins erases Badfish's only real edge, at RB2.
+- Ramrod (8-1) is the seeding threat: Gibbs 25.9 and Walker 21.3 at RB. You play them in Week 13, which is also Bowers's bye.
 
 ## Trade proposals (FantasyCalc 12-team SF)
-### 1. Tuna deal: send now
-- **Partner:** TheTunaSquad (1-5, rebuilding). They want Odunze, a 24-year-old WR who fits their timeline
-- **Base:** Give Odunze (2,336) + Freiermuth (1,375) = 3,711. Get Likely (3,358, 18.1 PPG) + Coker (2,821, 16.7) = 6,179
-- **Upside ask:** Coker + Tuna's own 2027 1st (projected 1.03, early 1st 5,024) = 7,845. Open here and settle for the base
-- **Why it works:** Tuna has said they want Odunze. Brett adds about 17 PPG at WR3/FLEX for a WR who is scoring 8.0, and Likely covers Bowers's Week 13 bye
-### 2. Seller RB buy
-- **Partner:** A new dawn rising (BamaGradLeague, 1-5, eight RBs)
-- **Get** Bucky Irving (3,523, 14.1 PPG, Q). **Give** Henderson (2,378) + 2027 3rd from AdamDenver (1,144) = 3,522
-- **Why it works:** Even on value. The rebuilder gets the younger back and a pick. Brett gets about 8 PPG at RB2 over Henderson
-### 3. TE surplus for an RB
-- **Partner:** Tet McMuffins (moreho15, 3-3, $8 FAAB, TE Kraft 9.2)
-- **Get** Chuba Hubbard (3,188, 19.6 PPG). **Give** Kelce (1,602) + Hockenson (1,438) = 3,040
-- **Why it works:** moreho15 gets two TEs who outscore Kraft. Brett turns bench TEs into a starting RB2. Make this offer only after the Tuna deal lands, because Likely covers Bowers's bye
+### 1. Seller RB buy: send now
+- **Partner:** A new dawn rising (BamaGradLeague, 3-6, $100 FAAB). Their WRs are Tate, Boston and Cooper, all questionable
+- **Get** Bucky Irving (4,260, 17.9 ROS, age 24). **Give** Rome Odunze (2,578) + TreVeyon Henderson (2,029) = 4,607
+- **Why it works:** A rebuilder gets a 24-year-old WR who fits their timeline, plus a buy-low RB. Brett adds about 6 PPG at RB2. Irving plays in Week 11, the week Judkins, Price and Henderson are all on bye. He's a dynasty-age RB, not a rental
+### 2. Backup RB plan
+- **Partner:** Bigmike9193 (3-6, eight RBs)
+- **Get** Chase Brown (2,949, 14.1 ROS; Weeks 15-16 at 15.4 and 15.7). **Give** Jadarian Price (2,548) + 2027 3rd from AdamDenver (1,144) = 3,692
+- **Why it works:** A rebuilder takes the 23-year-old. Brett gets a weekly RB2/FLEX with no Week 11 bye. Send this one only if Bama turns down trade 1
+### 3. Sell the surplus QB
+- **Partner:** SaquonMyPickens (MyChubbHurts21, 5-4). Mayfield is their only healthy QB, with Hurts on IR and Lock questionable
+- **Get** their 2028 2nd (1,380). **Give** Deshaun Watson (1,589, bye Week 11)
+- **Why it works:** Mahomes, Stroud and Rodgers have no byes left, so Watson is a fourth QB with no role. Turn him into a pick before his value hits zero
 
 ## Draft pick inventory
 | Year | Owned | Traded away |
 |---|---|---|
 | 2027 | 3rd (own), 3rd (ManBearPig1984), 3rd (AdamDenver) | 1st + 2nd to DetroitDumpsterFires, 4th to joebags85 |
 | 2028 | 1st (AdamDenver), 2nd (own), 2nd (AdamDenver) | 1st to joebags85, 3rd to TheTunaSquad, 4th to AdamDenver |
-| 2029 | 1st, 2nd, 4th (own) | 3rd to ManBearPig1984 |
-- **Pick watch (max PF order today):** 1.01 joebags85, 1.02 DetroitDumpsterFire, 1.03 TheTunaSquad (Tuna owns it, which is why the upside ask matters), 1.04 BamaGradLeague. Brett's own 1st is with DetroitDumpsterFires and will land around 1.12
+| 2029 | 1st, 2nd (own) | 3rd to ManBearPig1984, 4th to DetroitDumpsterFires (Rodgers trade) |
+- **Pick watch (max PF order today):** 1.01 joebags85, 1.02 DetroitDumpsterFire, 1.03 TheTunaSquad (Tuna still owns it on Sleeper), 1.04 BamaGradLeague, 1.05 Bigmike9193 → AdamDenver. Brett's own 1st is with DetroitDumpsterFires and lands around 1.12 if he wins the title
 
-## Bye planner (Weeks 8-14)
+## Bye planner (Weeks 11-14)
 | Week | Out | Fix |
 |---|---|---|
-| 8 | McCaffrey, Stroud, Kamara, Mac Jones, Etienne, Aiyuk, Bryce Lance | Lamar or Watson at SF. Judkins + Henderson at RB (or Likely in FLEX post-trade) |
-| 9 | Freiermuth | None needed |
-| 10 | Odunze, Waddle, PHI DST | Rice / Coker cover |
-| 11 | JSN, Judkins, Henderson, Price, Watson, Taylen Green, LAR DST | McCaffrey + Kamara at RB. BAL DST |
-| 13 | Bowers, Lamar, BAL DST, Sarratt, Hibner | Likely or Kelce at TE. Mahomes + Stroud at QB. LAR DST |
-| 14 | Lamb | Rice / Coker / Waddle |
+| 11 | JSN, Judkins, Price, Henderson, Watson, LAR DST | McCaffrey + Irving (or Kamara) at RB. Meyers/Waddle at WR (Odunze if no trade). JAX DST |
+| 12 | — | Full lineup |
+| 13 | Bowers, Sarratt, Hibner | Kelce at TE, Hockenson in FLEX |
+| 14 | Lamb | Rice / Meyers / Waddle |
 
 ## Week-by-week plan
 | Week | Opponent | Plan |
 |---|---|---|
-| 7 | DetroitDumpsterFires | Lamar only if active. Put in the Meyers claim. Send the Tuna offer |
-| 8 | ManBearPig1984 | Bye crunch. Lamar or Watson at SF |
-| 9 | Bigmike9193 | Pitch trade 2 or 3 if the Tuna deal is done |
-| 10 | AdamDenver | Have the RB2 settled so it gets 4+ games before the playoffs |
-| 11 | BamaGradLeague | Five-player bye week. Use FAAB on a one-week fill-in if needed |
-| 12 | moreho15 | |
-| 13 | Ramrod248 | No Bowers or Lamar. Lock the seed |
-| 14 (deadline) | TheTunaSquad | Last trades. Cut dead roster spots for handcuffs |
-| 15-17 | Playoffs | |
+| 10 | AdamDenver | Hockenson check before kickoff. Send trade 1 |
+| 11 | BamaGradLeague | Six-player bye week. The Irving trade is the fix. JAX DST |
+| 12 | moreho15 | Stroud at SF for good. Pitch trade 3 |
+| 13 | Ramrod248 | 1-seed game with no Bowers. Kelce at TE |
+| 14 (deadline) | TheTunaSquad | Last trades. Cut a taxi or fringe body for an RB handcuff |
+| 15-17 | Playoffs | Start JAX DST (HOU, DAL, WAS). If Lamar is activated, he's a Week 16-17 SF option |
 
 ## Offseason dynasty outlook
-- The core is JSN, Bowers, Lamb, Judkins, Stroud and Lamar. McCaffrey (31 next season) and Kelce (38) lose value fast after the season, so move them by the 2027 rookie draft if a contender pays.
-- Picks are thin: no 2027 1st or 2nd. The Tuna upside ask is the cheapest route back into the top 3.
+- The core is JSN, Bowers, Lamb, Judkins, Stroud and Lamar, plus Irving if the deal lands. McCaffrey (31 next season) and Kelce (38) lose value fast after the season, so move them by the 2027 rookie draft if a contender pays.
+- Picks are thin: no 2027 1st or 2nd. The cheapest route back into Round 1 is AdamDenver's 2028 1st plus a vet after the season.
 
 ## Caveats
-- Values are FantasyCalc (dynasty, Superflex, 12 teams, PPR), pulled Oct 22, 2026. KTC was not used because it wasn't loading. Values are a guide; acceptance isn't guaranteed.
-- PPG is computed from Sleeper season stats using this league's scoring, divided by games played.
-- Byes are from ESPN. Injury tags come from Sleeper and change daily.
+- Values are FantasyCalc (dynasty, Superflex, 12 teams, PPR), pulled Nov 12, 2026. ROS means Sleeper's projected PPG for Weeks 11-14. Acceptance isn't guaranteed.
+- Lamar: the coach called it "potentially" season-ending on Nov 1. NFL Network (Nov 8) reported 6-9 weeks after surgery and that he plans to return, so a Week 16-17 return is possible but not likely.
+- Byes come from Sleeper projections and ESPN. Injury tags come from Sleeper and change daily.
 - Pick-watch order applies the league rule (non-playoff teams by lowest max PF, then playoff teams by finish) to today's standings.
 
 ## Sources
 - [Sleeper league API](https://api.sleeper.app/v1/league/1312055708249767936)
 - [FantasyCalc dynasty values](https://www.fantasycalc.com/dynasty-rankings)
-- [ESPN NFL schedule](https://www.espn.com/nfl/schedule)
+- [FantasyPros ROS RB: Derek Brown (Nov 11, 2026)](https://www.fantasypros.com/nfl/rankings/derek-brown.php?position=RB&scoring=STD&type=ros)
+- [FantasyPros ROS: Pat Fitzmaurice PPR (Nov 11, 2026)](https://www.fantasypros.com/nfl/rankings/pat-fitzmaurice.php?scoring=PPR&type=ros)
+- [Lamar Jackson out 6-9 weeks (NFL.com)](https://www.nfl.com/news/ravens-lamar-jackson-right-thumb-out-6-9-weeks-expects-to-return-this-season)
+- [TreVeyon Henderson ruled out (NBC Sports, Nov 11)](https://www.nbcsports.com/fantasy/football/player-news/2026-11-11/patriots-rule-out-treveyon-henderson-for-week-10)
+- [Waddle concussion (ESPN)](https://www.espn.com/nfl/story/_/id/50423176/broncos-wr-jaylen-waddle-cb-riley-moss-suffer-concussions)
