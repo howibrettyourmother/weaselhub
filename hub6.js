@@ -37,15 +37,16 @@ var IDX=null;
 function index(){if(IDX)return IDX;var seen={};(D.allLeagues||D.leagues).forEach(function(L){Object.keys(L.rosters).forEach(function(k){(L.rosters[k].players||[]).forEach(function(p){seen[p]=1})});Object.keys((L.V&&L.V.p)||{}).forEach(function(p){seen[p]=1})});
   var arr=Object.keys(seen).map(function(id){var pi=pinfo(id),v=0;(D.allLeagues||D.leagues).forEach(function(L){v=Math.max(v,(L.V&&L.V.p[id])||0)});return {id:id,n:pi.n,pos:pi.pos,team:pi.team||'FA',v:v,u:pi.unknown}}).filter(function(x){return !x.u&&x.pos&&x.pos!=='?'}).sort(function(a,b){return b.v-a.v});
   return (IDX=arr)}
+function tval(L,id){var v=(L.V&&L.V.p[id])||0,b=+(L.ss&&L.ss.bonus_rec_te)||0;return pinfo(id).pos==='TE'?v*(1+0.25*Math.min(1,b)):v}// same TE-premium bump as the Trade Finder
 function who(L,id){var o=null;Object.keys(L.rosters).forEach(function(k){if((L.rosters[k].players||[]).indexOf(id)>=0)o=+k});return o}
-function routeIdea(L,id,rid){var M=L.model;if(!M||!M.teams[rid]||!M.me)return '';var B=M.teams[rid],A=M.me,tv=(L.V&&L.V.p[id])||0;if(tv<300)return '';
+function routeIdea(L,id,rid){var M=L.model;if(!M||!M.teams[rid]||!M.me)return '';var B=M.teams[rid],A=M.me,tv=tval(L,id);if(tv<300)return '';
   var needs=B.holes.length?B.holes:['QB','RB','WR','TE'].filter(function(p){return B.ratio[p]<1});
   var sf=L.rp&&(L.rp.indexOf('SUPER_FLEX')>=0||L.rp.filter(function(x){return x==='QB'}).length>=2),NC={QB:sf?2:1,RB:3,WR:4,TE:1},core={};['QB','RB','WR','TE'].forEach(function(p){((A.by&&A.by[p])||[]).slice(0,NC[p]).forEach(function(x){core[x]=1})});
-  var mine=(L.rosters[L.me].players||[]).filter(function(p){var pp=pinfo(p).pos;return needs.indexOf(pp)>=0&&(A.surplus.indexOf(pp)>=0||!core[p])}).map(function(p){return {id:p,v:(L.V.p[p]||0)}}).filter(function(x){return x.v>=tv*0.8&&x.v<=tv*1.3}).sort(function(a,b){return Math.abs(a.v-tv)-Math.abs(b.v-tv)});
+  var mine=(L.rosters[L.me].players||[]).filter(function(p){var pp=pinfo(p).pos;return needs.indexOf(pp)>=0&&(A.surplus.indexOf(pp)>=0||!core[p])}).map(function(p){return {id:p,v:tval(L,p)}}).filter(function(x){return x.v>=tv*0.8&&x.v<=tv*1.3}).sort(function(a,b){return Math.abs(a.v-tv)-Math.abs(b.v-tv)});
   var lead='They\'re '+({CONTENDER:'contending',REBUILD:'rebuilding',TWEENER:'in the middle'}[B.mode]||B.mode.toLowerCase())+(needs.length?', light at '+needs.slice(0,2).join('/'):'')+'.';
   return '<div class="small">'+lead+(mine.length?' Opening idea: your <b>'+esc(pinfo(mine[0].id).n)+'</b> ('+int(mine[0].v)+', '+pinfo(mine[0].id).pos+' they need, not one of your starters) for him ('+int(tv)+'). Value-only idea; check fit before sending.':' No clean 1-for-1 from your surplus; see the Trade Finder with him as the target.')+'</div>'}
 function card(id){var pi=pinfo(id),Ls=D.allLeagues||D.leagues,own=0;
-  var rows=Ls.map(function(L){var rid=who(L,id),v=(L.V&&L.V.p[id])||0,pr=projFor(L,id),me=rid===L.me;if(me)own++;
+  var rows=Ls.map(function(L){var rid=who(L,id),v=tval(L,id),pr=projFor(L,id),me=rid===L.me;if(me)own++;
     var tag=rid==null?'<span class="pill">FREE AGENT</span>':me?'<span class="pill g">YOURS</span>':'<b>'+esc(ownerOf(L,rid).name)+'</b>'+(L.model&&L.model.teams[rid]?' <span class="pill '+(L.model.teams[rid].mode==='CONTENDER'?'g':L.model.teams[rid].mode==='REBUILD'?'r':'y')+'">'+L.model.teams[rid].mode+'</span>':'');
     var act=rid==null?'<div class="small"><a href="https://sleeper.com/leagues/'+L.id+'/players" target="_blank" rel="noopener">Add in Sleeper ↗</a></div>':me?'':routeIdea(L,id,rid)+'<div class="small"><a href="#trade" onclick="try{sessionStorage.setItem(\'wh:tf:tgt\',\''+id+'\')}catch(e){}">Trade Finder ↗</a></div>';
     return '<div class="box pfrow"><div class="pfh"><b>'+esc(L.name)+'</b><span class="small muted">value '+int(v)+' · wk '+D.week+' proj '+f1(pr)+'</span></div><div>'+tag+'</div>'+act+'</div>'}).join('');
