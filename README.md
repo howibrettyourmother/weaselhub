@@ -27,14 +27,14 @@ Pick Watch ignores max PF for teams with 90%+ playoff odds (it can't move their 
 | File | What |
 |---|---|
 | `app.js` | state, Sleeper/ESPN loading, projections, statuses, Sunday tab, router, refresh |
-| `tabs.js` | Rosters, Exposure, Trade Desk (classic), Waivers, Picks, Recap, News, FantasyCalc values, team model |
+| `tabs.js` | Rosters, Exposure risk panel, Trade tab host, Waivers, Picks, Recap, News, FantasyCalc values, team model |
 | `tabs2.js` | Home snapshot, Scout, bye planner, roasts |
 | `live.js` | Live tab (play-by-play, Pick Watch, who's left) |
 | `hub2.js` / `hub3.js` / `hub4.js` | lineup briefing + value tracker / Trade Finder + Draft war room + concentration / contracts |
 | `cc.js` | Coaches Corner renderer (`data/cc_<league>.md`); record/PF rank/waivers/deadline tiles are live |
 | `core.js`, `hub5.js` | simulator + wiring (see above) |
 | `hub6.js` | Standings tab, Player Finder, key dates / deadline alert |
-| `hub7.js` | grouped navigation, phone bottom bar, folds older duplicate sections |
+| `hub7.js` | grouped navigation, phone bottom bar, redirects retired hash names |
 | `tools/` | data builders (below), `injury_alerts.py` (JSON of flagged starters across leagues), `smoke.py` |
 
 Each `*.js` is an IIFE except `app.js` (shared globals: `D`, `standings`, `pinfo`, `projFor`, `ownerOf`, `EXTRA_TABS`, ...).

@@ -1,5 +1,5 @@
 'use strict';
-// Weasel Hub, Priority 2/3 tabs: Rosters, Exposure, Trade Desk, Waivers, Picks, Recap, News.
+// Weasel Hub, Priority 2/3 tabs: Rosters, Exposure (risk), Trade (host for the Trade Finder), Waivers, Picks, Recap, News.
 // All client-side & free: Sleeper public API, FantasyCalc dynasty values, ESPN public fantasy news.
 (function(){
 var ORD=['','1st','2nd','3rd','4th','5th','6th','7th'];
@@ -86,55 +86,18 @@ function renderRosters(el){needData(el,function(){
   html+='<section class="panel"><h2>🗓️ Bye Planner</h2><div class="hint">Your <b>core lineup</b> = best starters from the whole roster (season points per game in this league\'s scoring, blended with this week\'s projection; FantasyCalc value breaks ties), ignoring byes and short injuries. Each week: 🛌 core starters on bye, 🚑 injured (Out/Doubtful this week; IR/PUP treated as out for the next 4 weeks until activated), and the points lost vs the best fill-in lineup. Red = unfillable slot or a big loss; gold = moderate loss or 3+ out. Past weeks dimmed (byes only). Tap a week for the slot-by-slot fill-ins. Full league buy/sell reads now live on <a href="#scout">Scout</a>.</div><div id="byep"><div class="spin">Loading schedule…</div></div></section>';
   el.innerHTML=html;if(window.byePlannerHTML)byePlannerHTML().then(function(h){var b=$('#byep');if(b){b.innerHTML=h;if(window.byeBind)byeBind(b)}})})}
 
-// ---------- EXPOSURE (+ value alerts, portfolio chart) ----------
+// ---------- EXPOSURE: risk concentration (tracker, concentration and contracts are added by hub2/hub3/hub4) ----------
 function renderExposure(el){needData(el,function(){
-  var agg={},total=0,pickTot=0;D.leagues.forEach(function(L){var t=L.model.me;pickTot+=t.kv;t.pl.forEach(function(id){var v=val(L,id);total+=v;var a=agg[id]=agg[id]||{id:id,v:0,lg:[],start:0,tr:0};a.v+=v;a.lg.push(L.name);if(t.starters.indexOf(id)>=0)a.start++;a.tr+=(L.V.t[id]||0)})});
+  var agg={},total=0;D.leagues.forEach(function(L){var t=L.model.me;t.pl.forEach(function(id){var v=val(L,id);total+=v;var a=agg[id]=agg[id]||{id:id,v:0,lg:[]};a.v+=v;a.lg.push(L.name)})});
   var list=Object.keys(agg).map(function(k){return agg[k]}).sort(function(a,b){return b.v-a.v||b.lg.length-a.lg.length});
-  var multi=list.filter(function(a){return a.lg.length>1}).length;
-  // portfolio snapshot (one per day)
-  var hist=LS.get('wh:port')||[],today=new Date().toLocaleDateString('en-CA',{timeZone:'America/New_York'});
-  var cur={d:today,v:Math.round(total+pickTot),p:Math.round(pickTot)};if(hist.length&&hist[hist.length-1].d===today)hist[hist.length-1]=cur;else hist.push(cur);hist=hist.slice(-180);LS.set('wh:port',hist);
-  // injury concentration
   var injV=0,injL=[],oldV=0;list.forEach(function(a){var pi=pinfo(a.id);if(pi.inj&&pi.inj!=='Active'){injV+=a.v;injL.push(a)}var ag=age(D.leagues[0],a.id),p=pos(a.id);if(ag&&((p==='RB'&&ag>=27)||(p!=='RB'&&ag>=30)))oldV+=a.v});
   var teamV={};list.forEach(function(a){var t=pinfo(a.id).team||'FA';teamV[t]=(teamV[t]||0)+a.v});var teamL=Object.keys(teamV).map(function(k){return [k,teamV[k]]}).sort(function(a,b){return b[1]-a[1]}).slice(0,5);
-  // value alerts: compare to snapshot (>=6 days old), else FantasyCalc 30-day trend
-  var snap=LS.get('wh:valsnap');var base=null;if(snap&&Date.now()-snap.at>=6*864e5)base=snap;
-  if(!snap||Date.now()-snap.at>=7*864e5){var o={};list.forEach(function(a){o[a.id]=a.v});LS.set('wh:valsnap',{at:Date.now(),v:o,prev:snap&&snap.v,prevAt:snap&&snap.at})}
-  else if(snap.prev){base={at:snap.prevAt,v:snap.prev}}
-  var alerts=list.filter(function(a){return a.v>=1500}).map(function(a){var d,src;if(base&&base.v[a.id]){d=(a.v-base.v[a.id])/base.v[a.id];src='since '+new Date(base.at).toLocaleDateString()}else{var tr=a.tr,pv=a.v-tr;d=pv>0?tr/Math.max(pv,500):0;src='30-day trend'}return {a:a,d:d,src:src}}).filter(function(x){return Math.abs(x.d)>=0.08}).sort(function(a,b){return Math.abs(b.d)-Math.abs(a.d)}).slice(0,12);
-  function chart(){if(hist.length<2)return '<div class="hint">Chart fills in as you visit (one snapshot per day). Today: <b>'+int(cur.v)+'</b>.</div>';var W=360,H=110,mn=Math.min.apply(null,hist.map(function(h){return h.v})),mx=Math.max.apply(null,hist.map(function(h){return h.v}));if(mx===mn){mx+=1;mn-=1}
-    var pts=hist.map(function(h,i){return [(i/(hist.length-1))*(W-10)+5,H-8-(h.v-mn)/(mx-mn)*(H-24)]});
-    return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="'+H+'" role="img" aria-label="Portfolio value"><polyline fill="none" stroke="#ffc72c" stroke-width="2.5" points="'+pts.map(function(p){return p[0].toFixed(1)+','+p[1].toFixed(1)}).join(' ')+'"/>'+pts.map(function(p,i){return i===pts.length-1?'<circle cx="'+p[0]+'" cy="'+p[1]+'" r="4" fill="#ffc72c"/>':''}).join('')+'<text x="5" y="12" fill="#8d97aa" font-size="10">'+int(mx)+'</text><text x="5" y="'+(H-1)+'" fill="#8d97aa" font-size="10">'+int(mn)+'</text></svg><div class="small muted">'+esc(hist[0].d)+' → '+esc(today)+' · now '+int(cur.v)+'</div>'}
-  el.innerHTML='<section class="panel"><h2>📊 Portfolio <small>'+int(total+pickTot)+' TOTAL</small></h2>'+chart()+'<div class="small muted">Players '+int(total)+' · picks '+int(pickTot)+' across '+D.leagues.length+' leagues.</div></section>'+
-  '<section class="panel"><h2>🧲 Exposure <small>'+list.length+' PLAYERS · '+multi+' IN 2+</small></h2><div class="tw"><table><tr><th>Player</th><th>Lg</th><th>Value</th><th>Share</th></tr>'+list.slice(0,30).map(function(a){var pi=pinfo(a.id);return '<tr><td class="w">'+posChip(pos(a.id))+' '+esc(pi.n)+(pi.inj?' <span class="inj">'+esc(pi.inj.slice(0,4).toUpperCase())+'</span>':'')+'<span class="muted small" style="display:block">'+esc(a.lg.join(', '))+'</span></td><td>'+a.lg.length+'</td><td>'+int(a.v)+'</td><td><b>'+(a.v/Math.max(1,total)*100).toFixed(1)+'%</b></td></tr>'}).join('')+'</table></div></section>'+
-  '<section class="panel"><h2>🚑 Risk Concentration</h2><table><tr><td>Value on the injury report (incl. Q)</td><td><b style="color:'+(injV/total>0.15?'var(--ag)':'var(--ink)')+'">'+(injV/Math.max(1,total)*100).toFixed(1)+'%</b></td></tr><tr><td>Value in age-cliff players (RB 27+, others 30+)</td><td><b>'+(oldV/Math.max(1,total)*100).toFixed(1)+'%</b></td></tr>'+teamL.map(function(t){return '<tr><td>'+esc(t[0])+' stack</td><td>'+(t[1]/Math.max(1,total)*100).toFixed(1)+'%</td></tr>'}).join('')+'</table>'+(injL.length?'<div class="small" style="margin-top:6px">Injured: '+injL.slice(0,12).map(function(a){var pi=pinfo(a.id);return esc(pi.n)+' ('+esc(pi.inj)+', '+a.lg.length+' lg)'}).join(', ')+'</div>':'')+'</section>'+
-  '<section class="panel"><h2>💹 Value Alerts</h2><div class="hint">Big FantasyCalc moves on your players. Rising = sell-high window; falling = buy-low (don\'t panic-sell, maybe add more).</div>'+(alerts.length?alerts.map(function(x){var up=x.d>0;return '<div class="flag"><div class="ic">'+(up?'📈':'📉')+'</div><div class="fx"><div class="ft">'+pnameB(x.a.id)+' <span class="pill '+(up?'g':'r')+'">'+(up?'SELL-HIGH':'BUY-LOW')+'</span></div><div class="small muted">'+(up?'+':'')+Math.round(x.d*100)+'% ('+esc(x.src)+') · now '+int(x.a.v)+' · '+esc(x.a.lg.join(', '))+'</div></div></div>'}).join(''):'<div class="empty">No big moves.</div>')+CREDIT+'</section>'})}
+  el.innerHTML='<section class="panel"><h2>🚑 Risk Concentration</h2><table><tr><td>Value on the injury report (incl. Q)</td><td><b style="color:'+(injV/total>0.15?'var(--ag)':'var(--ink)')+'">'+(injV/Math.max(1,total)*100).toFixed(1)+'%</b></td></tr><tr><td>Value in age-cliff players (RB 27+, others 30+)</td><td><b>'+(oldV/Math.max(1,total)*100).toFixed(1)+'%</b></td></tr>'+teamL.map(function(t){return '<tr><td>'+esc(t[0])+' stack</td><td>'+(t[1]/Math.max(1,total)*100).toFixed(1)+'%</td></tr>'}).join('')+'</table>'+(injL.length?'<div class="small" style="margin-top:6px">Injured: '+injL.slice(0,12).map(function(a){var pi=pinfo(a.id);return esc(pi.n)+' ('+esc(pi.inj)+', '+a.lg.length+' lg)'}).join(', ')+'</div>':'')+CREDIT+'</section>'})}
 
-// ---------- TRADE DESK (Fleece-Factory-style, Brett's side only) ----------
-function combos(arr,n){var out=[];(function f(i,cur){if(cur.length)out.push(cur);if(cur.length===n)return;for(var j=i;j<arr.length;j++)f(j+1,cur.concat([arr[j]]))})(0,[]);return out}
-function tradeIdeas(L){var M=L.model,A=M.me,ideas=[];var top={};Object.keys(M.teams).forEach(function(k){M.teams[k].pl.forEach(function(id){top[id]=val(L,id)})});
-  var ranked=Object.keys(top).filter(function(id){return NEEDS.indexOf(pos(id))>=0}).sort(function(a,b){return top[b]-top[a]}),big={};ranked.slice(0,Math.round(M.n*5)).forEach(function(id){big[id]=1});
-  function asset(id){return {k:'p',id:id,v:val(L,id),pos:pos(id),age:age(L,id)||26,big:!!big[id]}}
-  var need=A.holes.length?A.holes:NEEDS.slice().sort(function(a,b){return A.ratio[a]-A.ratio[b]}).slice(0,1);var surplus=A.surplus.filter(function(p){return need.indexOf(p)<0});
-  var give=[];surplus.forEach(function(p){A.by[p].slice(A.ratio[p]>1.3?0:1).forEach(function(id){if(val(L,id)>=800)give.push(asset(id))})});
-  NEEDS.forEach(function(p){if(need.indexOf(p)<0&&surplus.indexOf(p)<0)A.by[p].slice(Math.max(1,needCount(L)[p])).forEach(function(id){if(val(L,id)>=800)give.push(asset(id))})});
-  A.picks.filter(function(p){return p.v>=800}).forEach(function(p){give.push({k:'k',id:p.season+'-'+p.round+'-'+p.orig,v:p.v,pos:'PICK',s:p.season,r:p.round,o:p.orig,age:21,big:p.round===1})});
-  give=give.sort(function(a,b){return b.v-a.v}).slice(0,8);
-  Object.keys(M.teams).forEach(function(k){var B=M.teams[k];if(B.rid===L.me)return;
-    var anchors=[];need.forEach(function(p){B.by[p].forEach(function(id,i){if(big[id]&&(B.ratio[p]>=1||(B.mode==='REBUILD'&&(age(L,id)||26)>=27)||i>=needCount(L)[p]))anchors.push(asset(id))})});
-    anchors.slice(0,3).forEach(function(an){combos(give,3).forEach(function(g){if(g.length<2)return;var gv=g.reduce(function(a,x){return a+x.v},0),d=Math.abs(gv-an.v)/Math.max(gv,an.v);if(d>0.10)return;
-      var fits=g.some(function(x){return x.k==='k'?B.mode!=='CONTENDER':B.holes.indexOf(x.pos)>=0||B.ratio[x.pos]<1});if(!fits)return;
-      var sc=an.v/3000+(1.1-A.ratio[an.pos])*2-d*3-(g.length-1)*0.3;var ga=g.reduce(function(a,x){return a+x.age},0)/g.length;
-      if(A.mode==='CONTENDER'&&B.mode!=='CONTENDER'&&an.age>ga)sc+=1;if(A.mode==='REBUILD'&&B.mode==='CONTENDER'&&an.age<ga)sc+=1;
-      ideas.push({B:B,get:[an],give:g,gv:gv,d:d,sc:sc})})})});
-  ideas.sort(function(a,b){return b.sc-a.sc});var out=[],used={};ideas.forEach(function(c){if(out.length>=3)return;if(out.some(function(o){return o.B===c.B}))return;if(c.give.concat(c.get).some(function(x){return used[x.id]}))return;out.push(c);c.give.concat(c.get).forEach(function(x){used[x.id]=1})});
-  return {need:need,surplus:surplus,out:out}}
-var PITCH=["{B} has {Y} sitting at a spot they're deep at. You need a {pa}. Send it.","Within {d}% on value. Nobody gets fleeced. Allegedly.","{B} needs {pb} help; you need a {pa}. This is a real trade, not a lowball.","Fair on paper. Someone will still cry about it in the group chat."];
-function renderTrade(el){needData(el,function(){
-  el.innerHTML='<section class="panel"><h2>🧶 Trade Desk</h2><div class="hint">Value-balanced ideas (within 10% on FantasyCalc) that fill <b>your</b> weakest spot with a top asset from a team that can spare it, paid with your surplus and picks. Same logic as the league site\'s Fleece Factory.</div>'+D.leagues.map(function(L){var T=tradeIdeas(L),A=L.model.me;
-    function lab(x){return x.k==='p'?posChip(x.pos)+' '+pnameB(x.id)+' <span class="muted small">'+(x.age?x.age+' · ':'')+int(x.v)+'</span>':'<span class="pill y">PICK</span> '+x.s+' '+ORD[x.r]+(x.o!==L.me?' <span class="muted small">('+esc(ownerOf(L,x.o).name)+')</span>':'')+' <span class="muted small">'+int(x.v)+'</span>'}
-    return '<h3>'+esc(L.name)+' '+pill(A.mode)+'</h3><div class="small muted">Need: '+T.need.join(', ')+' · surplus: '+(T.surplus.join(', ')||'none')+'</div>'+(T.out.length?T.out.map(function(c,i){var line=PITCH[(i+(+L.id.slice(-2)))%PITCH.length].replace(/\{(\w+)\}/g,function(m,q){return '<b>'+esc({B:ownerOf(L,c.B.rid).name,Y:pinfo(c.get[0].id).n,pa:c.get[0].pos,pb:(c.B.holes[0]||c.give[0].pos),d:Math.round(c.d*100)}[q])+'</b>'});
-      return '<div class="box" style="margin:6px 0"><div class="grid2" style="grid-template-columns:1fr 1fr;gap:8px"><div><div class="small" style="color:var(--for)">YOU GET · '+int(c.get[0].v)+'</div>'+c.get.map(function(x){return '<div>'+lab(x)+'</div>'}).join('')+'</div><div><div class="small" style="color:var(--ag)">'+esc(ownerOf(L,c.B.rid).name)+' GETS · '+int(c.gv)+'</div>'+c.give.map(function(x){return '<div>'+lab(x)+'</div>'}).join('')+'</div></div><div class="small" style="margin-top:4px">'+line+'</div></div>'}).join(''):'<div class="empty">No balanced fit right now.</div>')}).join('')+CREDIT+'</section>'})}
+// ---------- TRADE: the Trade Finder (hub3.js) renders into this tab; this just waits for values ----------
+function renderTrade(el){needData(el,function(){el.innerHTML=''})}
+// retired views kept device-local snapshots; clear them once
+try{localStorage.removeItem('wh:port');localStorage.removeItem('wh:valsnap')}catch(e){}
 
 // ---------- WAIVERS ----------
 var _trend=null;
