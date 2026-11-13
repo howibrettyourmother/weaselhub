@@ -19,10 +19,10 @@ function block(lines){var out=[],i=0;
 var ICON={'This week':'⚡','Snapshot':'📋','Standings':'📊','Roster audit':'🩺','Draft pick inventory':'🎯','Waiver / IR / taxi moves':'🧺','Week-by-week plan':'🗓️','Offseason dynasty outlook':'🔭','Caveats':'⚠️','Sources':'🔗'};
 // Sideline analysts: original illustrated, fictional adult hosts (no real-person likeness).
 var HOST={
- shadynasty:{n:'Valentina "Val" Cruz',r:'Sideline Analyst',c:'navy',need:'WR3 + RB2',q:'Odunze for Likely + Coker? Now that is the kind of upgrade I notice.'},
- f2020:{n:'Scarlett Reyes',r:'Field Reporter',c:'red',need:'RB vs. olis1mao',q:'Deadline is Week 11, handsome. Don\'t keep me waiting.'},
- dynastyjunkies:{n:'Nia Brooks',r:'War Room Strategist',c:'green',need:'WR3 (Waddle 9.2)',q:'Six and oh looks good on you. A real WR3 would look even better.'},
- livefree:{n:'Sloane Avery',r:'Sideline Insider',c:'blue',need:'QB + RB',q:'Four firsts and you\'re starting Winston? Treat yourself.'}};
+ shadynasty:{n:'Valentina "Val" Cruz',r:'Sideline Analyst',c:'navy',need:'RB2 (Judkins 11.5)',q:'Nine and oh and still hungry? Bring me Bucky Irving and we can talk about a perfect season.'},
+ f2020:{n:'Scarlett Reyes',r:'Field Reporter',c:'red',need:'FLEX WR · deadline Wk 11',q:'Four quarterbacks, two seats, one week left, handsome. Do the math before Thursday.'},
+ dynastyjunkies:{n:'Nia Brooks',r:'War Room Strategist',c:'green',need:'WR3 + QB2',q:'Tied for first looks good on you. Christian Watson would look even better, and you own cuzlar\'s pick anyway.'},
+ livefree:{n:'Sloane Avery',r:'Sideline Insider',c:'blue',need:'QB + RB',q:'Four firsts and Darren Waller at Superflex? Treat yourself to a quarterback.'}};
 // live numbers from Sleeper for the hero tiles (the markdown snapshot goes stale between Dynasty Guru refreshes)
 function nk(x){return String(x||'').toLowerCase().replace(/[^a-z0-9]/g,'')}
 function lgOf(k){var nm=nk((LGS.filter(function(l){return l[0]===k})[0]||[])[1]);return (D.allLeagues||D.leagues||[]).filter(function(L){return nk(L.name)===nm})[0]||null}
