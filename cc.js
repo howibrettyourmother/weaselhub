@@ -59,7 +59,7 @@ function sw(){return '<div class="ccsw" id="ccsw" role="tablist"><span class="cc
 function load(k){return fetch('data/cc_'+k+'.md?t='+new Date().toISOString().slice(0,13),{cache:'no-cache'}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.text()}).then(function(t){MD[k]=t;return t})}
 function bind(el){var b=el.querySelectorAll('[data-cl]');for(var i=0;i<b.length;i++)b[i].onclick=function(){CUR=this.getAttribute('data-cl');LS.set('ccLeague',CUR);renderCC(el);window.scrollTo(0,0)}}
 function renderCC(el){syncCls();if(D.allLeagues&&D.leagues&&D.leagues.length===1&&D.allLeagues.length>1){var one=LGS.filter(function(l){return nk(l[1])===nk(D.leagues[0].name)})[0];if(one)CUR=one[0]}var k=CUR;if(MD[k]){el.innerHTML=render(MD[k]);bind(el);return}el.innerHTML=sw()+'<div class="spin">Loading Coaches Corner…</div>';bind(el);load(k).then(function(){if(curTab()[0]==='coach'&&CUR===k){el.innerHTML=render(MD[k]);bind(el)}}).catch(function(e){el.innerHTML=sw()+'<div class="panel err">Couldn\'t load Coaches Corner: '+esc(e.message)+'</div>';bind(el)})}
-EXTRA_TABS.push(['coach','🧠','COACHES CORNER',renderCC]);
+EXTRA_TABS.push(['coach','🧠','COACH',renderCC]);
 if(window.TAB_ORDER)TAB_ORDER[0].push('coach');
 $('#tabs').innerHTML=navHTML();
 })();

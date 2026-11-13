@@ -250,3 +250,24 @@ body.cc-on #lgf{display:none}
 .pfq{width:100%;box-sizing:border-box;height:46px;border-radius:12px;border:1px solid rgba(255,199,44,.45);background:rgba(0,0,0,.35);color:var(--ink);padding:0 14px;font-size:16px;margin-top:6px}
 .pft{display:flex;gap:10px;align-items:center;margin:8px 0 10px}.pft .hs{width:52px;height:52px}
 .pfrow{margin:0 0 8px}.pfh{display:flex;flex-wrap:wrap;justify-content:space-between;gap:2px 8px;margin-bottom:4px}
+/* round 5: grouped navigation (phone bottom bar) + folded older sections */
+#bnav{display:none}
+@media(max-width:699px){
+  #bnav{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:60;background:rgba(5,7,13,.96);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border-top:1px solid rgba(255,199,44,.25);padding:4px 4px calc(4px + env(safe-area-inset-bottom))}
+  #bnav a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50px;border-radius:10px;color:#aeb7c7;font:700 10.5px/1.15 var(--disp);letter-spacing:.08em;text-decoration:none}
+  #bnav a span{font-size:19px;line-height:1.1;margin-bottom:2px}
+  #bnav a.on{color:#05070d;background:linear-gradient(180deg,#ffd75e,#ffc72c)}
+  body{padding-bottom:calc(66px + env(safe-area-inset-bottom))}
+  #tabs .tsep{display:none}
+  #tabs a{flex-direction:row;gap:5px;min-height:38px;min-width:0;padding:4px 12px;font-size:12px}
+  #tabs a span{font-size:15px}
+  body[data-grp] #tabs a{display:none}
+  body[data-grp="today"] #tabs a[data-g="today"],body[data-grp="leagues"] #tabs a[data-g="leagues"],body[data-grp="moves"] #tabs a[data-g="moves"],body[data-grp="draft"] #tabs a[data-g="draft"],body[data-grp="more"] #tabs a[data-g="more"]{display:flex}
+  #toast{bottom:calc(76px + env(safe-area-inset-bottom))!important}
+}
+section.folded{padding-top:8px;padding-bottom:8px;border-top-color:rgba(255,255,255,.18)}
+details.fold>summary{list-style:none;cursor:pointer}details.fold>summary::-webkit-details-marker{display:none}
+details.fold>summary h2{margin:0;opacity:.8}details.fold>summary h2 small{display:block;text-transform:none;letter-spacing:0;font:400 11.5px -apple-system,Arial,sans-serif;color:var(--mute);margin-top:2px}
+details.fold>summary h2:after{content:' ▸';color:var(--gold)}details.fold[open]>summary h2:after{content:' ▾'}
+@media(min-width:700px){#tabs{flex-wrap:wrap;justify-content:center;row-gap:2px}}
+@media(max-width:699px){#view a.small[target="_blank"]{display:inline-block;padding:8px 0;margin:-4px 0}}
