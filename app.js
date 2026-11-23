@@ -83,8 +83,8 @@ function pinfo(id){
   if(db)return {id:id,n:db.n,pos:db.p[0],fp:db.p,team:db.t,inj:IJ.inj,body:db.b,stsrc:IJ.src,active:IJ.active};
   return {id:id,n:'Player '+id,pos:'?',fp:[],team:null,inj:null,unknown:true}}
 function head(id,cls){var pi=pinfo(id);
-  if(pi.pos==='DEF')return '<img class="hs def '+(cls||'')+'" loading="lazy" alt="" src="https://sleepercdn.com/images/team_logos/nfl/'+String(id).toLowerCase()+'.png" onerror="this.onerror=null;this.src=\'icons/icon-192.png?v=2\';this.style.opacity=.35">';
-  return '<img class="hs '+(cls||'')+'" loading="lazy" alt="" src="https://sleepercdn.com/content/nfl/players/thumb/'+id+'.jpg" onerror="this.onerror=null;this.src=\'icons/icon-192.png?v=2\';this.style.opacity=.35">'}
+  if(pi.pos==='DEF')return '<img class="hs def '+(cls||'')+'" loading="lazy" alt="" src="https://sleepercdn.com/images/team_logos/nfl/'+String(id).toLowerCase()+'.png" onerror="this.onerror=null;this.src=\'icons/icon-192.png?v=3\';this.style.opacity=.35">';
+  return '<img class="hs '+(cls||'')+'" loading="lazy" alt="" src="https://sleepercdn.com/content/nfl/players/thumb/'+id+'.jpg" onerror="this.onerror=null;this.src=\'icons/icon-192.png?v=3\';this.style.opacity=.35">'}
 function posChip(pos){var c=/^(QB|RB|WR|TE|K|DEF)$/.test(pos)?pos:'IDP';return '<span class="pos '+c+'">'+esc(pos||'?')+'</span>'}
 
 // ---------------- schedule (ESPN public scoreboard; CORS *) ----------------
