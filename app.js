@@ -25,7 +25,7 @@ var ESPN_FIX={WSH:'WAS',LA:'LAR',JAC:'JAX'};
 
 // ---------------- global state ----------------
 var D={user:null,season:null,week:null,leagues:[],skipped:[],proj:{},games:{},byes:{},players:null,errors:[],at:0};
-var UI={slot:'all',pos:'all',side:'both',open:{},openCards:{},all:{}};
+var UI={slot:'all',pos:'all',side:'auto',open:{},openCards:{},all:{}};
 // ---------------- league filter (multi-select; ?lg=id,id and localStorage) ----------------
 var LGK='wh:lg';function lgSel(){var q=QS.get('lg');if(q!=null)return q?q.split(',').filter(Boolean):[];return LS.get(LGK)||[]}
 function applyLg(){var all=D.allLeagues||D.leagues,sel=lgSel(),f=all.filter(function(L){return sel.indexOf(L.id)>=0});D.leagues=f.length?f:all;D.M=null}
@@ -93,11 +93,18 @@ var _ETT=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'s
 // kickoffs from the Sleeper fallback schedule have a date but no time: show the day only instead of a fake noon kickoff
 var ETTIME={format:function(d){return d&&d._approx?_ETWD.format(d)+' (time TBA)':_ETT.format(d)}};
 function slotOf(d){var parts=ETFMT.formatToParts(d),wd='',h=0;parts.forEach(function(p){if(p.type==='weekday')wd=p.value;if(p.type==='hour')h=+p.value%24});
-  if(wd==='Thu')return 'thu';if(wd==='Fri')return 'fri';if(wd==='Sat')return 'sat';
+  if(wd==='Wed')return 'wed';
+  if(wd==='Thu')return h<15?'thu1':h<19?'thu2':'thu3';
+  if(wd==='Fri')return 'fri';
+  if(wd==='Sat')return h<15?'sat1':h<19?'sat2':'sat3';
   if(wd==='Sun'){if(h<12)return 'sunam';if(h<15)return 'early';if(h<19)return 'late';return 'snf'}
   if(wd==='Mon')return 'mon';return 'oth'}
-var SLOTS=[['thu','Thursday'],['fri','Friday'],['sat','Saturday'],['sunam','Sun AM (Intl)'],['sun','Sunday'],['early','Sun Early'],['late','Sun Late'],['snf','Sun Night'],['mon','Monday'],['oth','Other'],['bye','Bye/None']];
+var SLOTS=[['wed','Wednesday'],['thu1','Thu Early'],['thu2','Thu Late'],['thu3','Thu Night'],['thu','Thursday'],['fri','Friday'],['sat1','Sat Early'],['sat2','Sat Late'],['sat3','Sat Night'],['sat','Saturday'],['sunam','Sun AM (Intl)'],['sun','Sunday'],['early','Sun Early'],['late','Sun Late'],['snf','Sun Night'],['mon','Monday'],['oth','Other'],['bye','Bye/None']];
 var SLOTNAME={};SLOTS.forEach(function(s){SLOTNAME[s[0]]=s[1]});
+function isHolidaySlate(){var has={};for(var t in D.games)has[D.games[t].slot]=1;return !!(has.wed||has.fri||has.sat1||has.sat2||has.sat3||has.sat||(has.thu1||has.thu2))}
+function slotChipLabel(k,cnt){if(k==='thu3'&&!cnt.thu1&&!cnt.thu2)return 'Thursday';
+  if((k==='sat1'||k==='sat2'||k==='sat3')&&((cnt.sat1?1:0)+(cnt.sat2?1:0)+(cnt.sat3?1:0))===1)return 'Saturday';
+  return SLOTNAME[k]||k}
 function loadGames(bust){
   var SBU='https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?week='+D.week+'&seasontype=2&dates='+D.season;
   // one retry with a fresh cache-buster before falling back (a stale CDN copy can come back without CORS headers)
@@ -106,13 +113,14 @@ function loadGames(bust){
     (sb.events||[]).forEach(function(ev){var c=ev.competitions[0],st=c.status||ev.status,kick=new Date(ev.date);
       var state=st.type.state,per=st.period||0,clk=st.clock||0,frac=1;
       if(state==='in'){var el=per<=4?((per-1)*900+(900-clk))/3600:0.985;frac=Math.max(0.015,Math.min(1,1-el))}else if(state==='post')frac=0;
-      var tms=c.competitors.map(function(x){return {ab:ESPN_FIX[x.team.abbreviation]||x.team.abbreviation,tid:x.team.id,score:+x.score||0,ha:x.homeAway}});
-      var od=(c.odds&&c.odds[0])||{},sit=c.situation||{};var info={rz:!!(sit.isRedZone&&sit.possession&&sit.downDistanceText),dd:sit.possession?sit.downDistanceText||null:null,poss:sit.possession||null,id:ev.id,kick:kick,slot:slotOf(kick),state:state,frac:frac,detail:st.type.shortDetail,teams:tms,name:ev.shortName,ou:+od.overUnder||null,line:od.details||null};
+      var tms=c.competitors.map(function(x){return {ab:ESPN_FIX[x.team.abbreviation]||x.team.abbreviation,tid:x.team.id,score:+x.score||0,ha:x.homeAway,rec:(x.records&&x.records[0]&&x.records[0].summary)||''}});
+      var bc=[],seenB={};(c.broadcasts||[]).forEach(function(b){(b.names||[]).forEach(function(n){if(n&&!seenB[n]){seenB[n]=1;bc.push(n)}})});
+      var od=(c.odds&&c.odds[0])||{},sit=c.situation||{};var info={rz:!!(sit.isRedZone&&sit.possession&&sit.downDistanceText),dd:sit.possession?sit.downDistanceText||null:null,poss:sit.possession||null,id:ev.id,kick:kick,slot:slotOf(kick),state:state,frac:frac,detail:st.type.shortDetail,teams:tms,name:ev.shortName,tv:bc.join(' / '),ou:+od.overUnder||null,line:od.details||null};
       tms.forEach(function(t){g[t.ab]=info})});
     D.games=g;D.byes=byes;D.gamesOk=true;D.gamesSrc='ESPN'}).catch(function(e){
     // fallback: Sleeper schedule (dates + status only, no kickoff times)
     return J(SAPI+'/schedule/nfl/regular/'+D.season).then(function(all){var g={};all.filter(function(x){return +x.week===+D.week}).forEach(function(x){
-        var dt=new Date(x.date+'T17:00:00Z');dt._approx=true;var wd=new Date(x.date+'T12:00:00Z').getUTCDay(),slot=['sun','mon','oth','oth','thu','fri','sat'][wd];
+        var dt=new Date(x.date+'T17:00:00Z');dt._approx=true;var wd=new Date(x.date+'T12:00:00Z').getUTCDay(),slot=['sun','mon','oth','wed','thu','fri','sat'][wd];
         var state=x.status==='complete'?'post':(x.status==='pre_game'||x.status==='scheduled'||!x.status)?'pre':'in';
         var info={id:x.game_id,kick:dt,slot:slot,state:state,frac:state==='in'?0.5:state==='pre'?1:0,detail:state==='in'?'live':state,teams:[{ab:x.away,ha:'away',score:0},{ab:x.home,ha:'home',score:0}],name:x.away+' @ '+x.home};
         g[x.home]=info;g[x.away]=info});
@@ -411,7 +419,7 @@ function lateCalc(c){function rl(l){return l.state!=='post'&&l.rem>0.05}var a=c.
   if(a.length&&(gap>0||!b.length&&gap>-0.05))return {t:'You need '+f1(Math.max(0,gap+rb))+' from '+nm(a)+' to win',p:p,good:false};
   if(b.length)return {t:(ownerOf(c.L,c.L.opp).name)+' needs '+f1(Math.max(0,-gap+ra))+' from '+nm(b),p:p,good:true};return null}
 function lateMath(c){var x=lateCalc(c);return x?'<div class="small late" style="margin-top:4px;color:'+(x.p>=0.5?'var(--for)':'var(--ag)')+'">🧮 '+esc(x.t)+' <b>(you '+(x.p<0.01?'&lt;1':x.p>0.99?'&gt;99':'≈'+Math.round(x.p*100))+'%)</b></div>':''}
-var SHORT={thu:'TNF',fri:'Friday',sat:'Saturday',sunam:'London',sun:'Sunday',early:'Early',late:'Late',snf:'SNF',mon:'MNF',oth:'Other'};
+var SHORT={wed:'Wed',thu1:'Thu 1pm',thu2:'Thu 4:30',thu3:'TNF',thu:'TNF',fri:'Friday',sat1:'Sat Early',sat2:'Sat Late',sat3:'Sat Night',sat:'Saturday',sunam:'London',sun:'Sunday',early:'Early',late:'Late',snf:'SNF',mon:'MNF',oth:'Other'};
 var SUNS={sunam:1,sun:1,early:1,late:1,snf:1};
 function bankLabel(me,op){var order=SLOTS.map(function(s){return s[0]}),done={},pre={};me.lines.concat(op.lines).forEach(function(l){if(l.state==='post')done[l.slot]=1;else if(l.state==='pre')pre[l.slot]=1});
   var d=order.filter(function(k){return done[k]}),p=order.filter(function(k){return pre[k]});if(!p.length)return 'FINAL';
@@ -438,9 +446,10 @@ function renderSunday(el){
   // slot chips
   var rootPs=M.players.map(scopeRootPlayer).filter(Boolean);
   var cnt={all:0};rootPs.forEach(function(P){if(Math.abs(P.key)<1e-4)return;cnt.all++;cnt[P.line.slot]=(cnt[P.line.slot]||0)+1});
-  var chips='<div class="chips" id="chips">'+[['all','All']].concat(SLOTS).filter(function(s){return s[0]==='all'||cnt[s[0]]}).map(function(s){var st=s[0]==='all'?'':slotState(s[0]);return '<button class="chip'+(UI.slot===s[0]?' on':'')+'" data-s="'+s[0]+'">'+s[1]+'<span class="c"> '+(cnt[s[0]]||0)+'</span>'+(st==='live'?'<span class="st">● LIVE</span>':st==='fin'?'<span class="st fin">✓</span>':'')+'</button>'}).join('')+'</div>';
+  var hol=isHolidaySlate(),side=(UI.side==='auto'?(hol?'game':'both'):UI.side);
+  var chips='<div class="chips" id="chips">'+[['all','All']].concat(SLOTS).filter(function(s){return s[0]==='all'||cnt[s[0]]}).map(function(s){var st=s[0]==='all'?'':slotState(s[0]);var lb=s[0]==='all'?'All':slotChipLabel(s[0],cnt);return '<button class="chip'+(UI.slot===s[0]?' on':'')+'" data-s="'+s[0]+'">'+lb+'<span class="c"> '+(cnt[s[0]]||0)+'</span>'+(st==='live'?'<span class="st">● LIVE</span>':st==='fin'?'<span class="st fin">✓</span>':'')+'</button>'}).join('')+'</div>';
   var POS=['all','QB','RB','WR','TE'],posOf=function(P){var pi=P.line.pi;return pi.pos||((pi.fp||[])[0])};
-  chips+='<div class="chips" id="pchips">'+POS.map(function(p){return '<button class="chip'+(UI.pos===p?' on':'')+'" data-p="'+p+'">'+(p==='all'?'All pos':p)+'</button>'}).join('')+'<span style="flex:0 0 8px"></span>'+[['both','For + Against'],['for','Root For'],['ag','Root Against']].map(function(x){return '<button class="chip'+(UI.side===x[0]?' on':'')+'" data-sd="'+x[0]+'">'+x[1]+'</button>'}).join('')+'</div>';
+  chips+='<div class="chips" id="pchips">'+[['game','By Game'],['both','For + Against'],['for','Root For'],['ag','Root Against']].map(function(x){return '<button class="chip'+(side===x[0]?' on':'')+'" data-sd="'+x[0]+'">'+x[1]+'</button>'}).join('')+'<span style="flex:0 0 8px"></span>'+POS.map(function(p){return '<button class="chip'+(UI.pos===p?' on':'')+'" data-p="'+p+'">'+(p==='all'?'All pos':p)+'</button>'}).join('')+'</div>';
   var inSlot=rootPs.filter(function(P){return Math.abs(P.key)>=1e-4&&(UI.slot==='all'||P.line.slot===UI.slot)&&(UI.pos==='all'||posOf(P)===UI.pos)});
   var fr=inSlot.filter(function(P){return P.key>0}).sort(function(a,b){return (a.done-b.done)||b.key-a.key}),ag=inSlot.filter(function(P){return P.key<0}).sort(function(a,b){return (a.done-b.done)||a.key-b.key});
   // conflicts: full (net) row in the net list + a compact mirror row in the other list, so "your starter" never disappears from Root For
@@ -449,6 +458,79 @@ function renderSunday(el){
   fr=fr.concat(frM.map(function(P){return {mirror:P}}));ag=ag.concat(agM.map(function(P){return {mirror:P}}));
   var max=Math.max.apply(null,[0.01].concat(rootPs.map(function(P){return Math.abs(P.key)})));
   function lst(arr,cls,title){var lim=UI.all[cls]?arr.length:15,more=arr.length-lim;return '<div class="list '+cls+'"><div class="lh '+cls+'">'+title+'<span>'+arr.length+' players</span></div>'+(arr.length?arr.slice(0,lim).map(function(P){return P.mirror?rowHTML(P.mirror,cls,max,true):rowHTML(P,cls,max)}).join(''):'<div class="empty">Nobody in this slot.</div>')+(more>0?'<button class="chip more" data-more="'+cls+'" style="margin:8px auto;display:block">Show '+more+' more</button>':'')+'</div>'}
+  function byGameHTML(){
+    var gmap={},gs=[];for(var t in D.games){var g=D.games[t];if(!gmap[g.id]){gmap[g.id]=1;if(UI.slot==='all'||g.slot===UI.slot)gs.push(g)}}
+    gs.sort(function(a,b){return (+a.kick)-(+b.kick)||String(a.name).localeCompare(String(b.name))});
+    var pByG={};inSlot.forEach(function(P){var g=P.line.g;if(!g)return;(pByG[g.id]=pByG[g.id]||[]).push(P)});
+    function shortNm(pi){if(pi.pos==='DEF')return (pi.team||pi.n)+' D/ST';var s=String(pi.n||'').replace(/\s+(Jr\.?|Sr\.?|II|III|IV|V)$/i,'').trim();return s.split(' ').slice(-1)[0]||pi.n}
+    // off-matchup Pick Watch & Rival Watch context per NFL game
+    var wByG={};
+    D.leagues.forEach(function(L){
+      var seenRid={};
+      (L.picks||[]).forEach(function(p){if(!p.near||p.rid===L.me||!L.sides||!L.sides[p.rid])return;
+        var st=p.st||{};if(p.inPO&&!(st.bubble>0.12))return;seenRid[p.rid]=1;
+        var owner=ownerOf(L,p.rid).name,why=p.inPO?'bubble':'low max PF';
+        var byG={};L.sides[p.rid].lines.forEach(function(l){if(!l.g)return;(byG[l.g.id]=byG[l.g.id]||[]).push(shortNm(l.pi))});
+        Object.keys(byG).forEach(function(gid){(wByG[gid]=wByG[gid]||[]).push({k:'pick',txt:'🎯 '+esc(owner)+' ('+esc(L.name)+' '+esc(p.label)+', want '+why+'): '+esc(byG[gid].slice(0,3).join(', '))+(byG[gid].length>3?' +'+(byG[gid].length-3):'')})})});
+      (L.rivals||[]).forEach(function(r){if(r.rid===L.me||r.rid===L.opp||seenRid[r.rid]||!L.sides||!L.sides[r.rid])return;
+        var owner=ownerOf(L,r.rid).name;
+        var byG={};L.sides[r.rid].lines.forEach(function(l){if(!l.g)return;(byG[l.g.id]=byG[l.g.id]||[]).push(shortNm(l.pi))});
+        Object.keys(byG).forEach(function(gid){(wByG[gid]=wByG[gid]||[]).push({k:'rival',txt:'👀 '+esc(owner)+' ('+esc(L.name)+' '+r.w+'-'+r.l+'): '+esc(byG[gid].slice(0,3).join(', '))+(byG[gid].length>3?' +'+(byG[gid].length-3):'')})})});
+    });
+    if(UI.pos!=='all')gs=gs.filter(function(g){return (pByG[g.id]||[]).length>0});
+    if(!gs.length)return '<div class="empty">No games match this filter.</div>';
+    var etDay=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York'});
+    var etHead=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'long',month:'short',day:'numeric'});
+    var days=[],dmap={};
+    gs.forEach(function(g){var k=g.kick&&!g.kick._approx?etDay.format(g.kick):g.slot;if(!dmap[k]){dmap[k]={k:k,gs:[]};days.push(dmap[k])}dmap[k].gs.push(g)});
+    function pRow(P){var l=P.line,pi=l.pi,v=P.key,pos=v>=0;
+      var forLs=[],agLs=[];P.ent.forEach(function(e){var x=P.done?e.base:e.imp;if(x>5e-4)forLs.push(e.L.name);else if(x<-5e-4)agLs.push(e.L.name)});
+      var why='';
+      if(P.conf)why='<span class="tag cf">CONFLICT</span> '+(forLs.length?'<span class="pe">For:</span> '+esc(forLs.join(', ')):'')+(forLs.length&&agLs.length?' · ':'')+(agLs.length?'<span class="ne">Vs:</span> '+esc(agLs.join(', ')):'');
+      else if(pos)why=esc(forLs.join(', '));
+      else why='vs you: '+esc(agLs.join(', '));
+      var bn=(D.bench||{})[P.id];var live=l.state!=='pre'&&l.g?' · <b>'+f1(P.ent[0].act)+'</b> pts':'';
+      return '<div class="rg-pr '+(pos?'for':'ag')+(P.done?' done':'')+'">'+head(P.id)+'<div class="rg-pm"><div class="rg-pn"><b>'+esc(pi.n)+'</b> '+posChip(pi.pos)+' <span class="muted small">'+esc(pi.team||'')+'</span>'+(pi.inj?' <span class="inj">'+esc(String(pi.inj).toUpperCase().slice(0,4))+'</span>':'')+'</div><div class="small muted">'+why+(bn&&bn.length?' · <i>bench: '+esc(bn.join(', '))+'</i>':'')+'</div></div><div class="rg-pi"><b class="'+(pos?'pe':'ne')+'">'+(pos?'+':'−')+f1(Math.abs(v)*100)+'%</b><small class="muted">'+projRange(P)+' proj'+live+'</small></div></div>'}
+    function lionsNote(g,gfr,gag){
+      var hasDet=g.teams.some(function(t){return t.ab==='DET'});if(!hasDet||g.slot.indexOf('thu')!==0)return '';
+      var detF=gfr.filter(function(P){return P.line.pi.team==='DET'}).map(function(P){return shortNm(P.line.pi)});
+      var detA=gag.filter(function(P){return P.line.pi.team==='DET'}).map(function(P){return shortNm(P.line.pi)});
+      var oppF=gfr.filter(function(P){return P.line.pi.team!=='DET'}).map(function(P){return shortNm(P.line.pi)});
+      if(oppF.length&&detA.length)return '<div class="rg-lions">🦁 <b>Lions Thanksgiving dilemma:</b> You start '+esc(oppF.join(', '))+' while facing '+esc(detA.join(' & '))+' — pull for a Honolulu Blue W on defense &amp; Monty/St. Brown while '+esc(oppF.join('/'))+' pile up yardage!</div>';
+      if(detF.length)return '<div class="rg-lions">🦁 <b>Lions Thanksgiving at Ford Field:</b> Forward Down the Field — root for '+esc(detF.join(' & '))+' to feast and Detroit to roll!</div>';
+      return '<div class="rg-lions">🦁 <b>Lions Thanksgiving at Ford Field:</b> Grab the turkey leg and pull for Honolulu Blue!</div>'}
+    return days.map(function(d){
+      var g0=d.gs[0],wd=g0.kick&&!g0.kick._approx?_ETWD.format(g0.kick):'';
+      var mmdd=d.k.length===10?d.k.slice(5):'';
+      var title=g0.kick&&!g0.kick._approx?etHead.format(g0.kick):SLOTNAME[g0.slot]||d.k;
+      var badge='';
+      if(mmdd==='11-25'||(wd==='Wed'&&hol))badge='<span class="pill y">🦃 THANKSGIVING EVE</span>';
+      else if(wd==='Thu'&&d.gs.length>=2)badge='<span class="pill y">🦃 THANKSGIVING · '+d.gs.length+' GAMES</span>';
+      else if(mmdd==='11-27'||(wd==='Fri'&&hol))badge='<span class="pill y">🛍️ BLACK FRIDAY</span>';
+      else if(wd==='Sat'&&d.gs.length>=2)badge='<span class="pill y">🏈 SATURDAY · '+d.gs.length+' GAMES</span>';
+      var cards=d.gs.map(function(g){
+        var ps=(pByG[g.id]||[]).slice();
+        var gfr=ps.filter(function(P){return P.key>0}).sort(function(a,b){return b.key-a.key});
+        var gag=ps.filter(function(P){return P.key<0}).sort(function(a,b){return a.key-b.key});
+        var net=ps.reduce(function(a,P){return a+P.key},0);
+        var aw=g.teams.filter(function(t){return t.ha==='away'})[0]||g.teams[0],hm=g.teams.filter(function(t){return t.ha==='home'})[0]||g.teams[1];
+        var matchTitle='<b>'+esc(aw.ab)+'</b>'+(aw.rec?' <span class="muted small">('+esc(aw.rec)+')</span>':'')+' @ <b>'+esc(hm.ab)+'</b>'+(hm.rec?' <span class="muted small">('+esc(hm.rec)+')</span>':'');
+        if(aw.ab==='DET'||hm.ab==='DET')matchTitle+=' <span class="tag">🦁</span>';
+        var stTag=g.state==='in'?'<span class="tag lv">● LIVE '+aw.score+'–'+hm.score+' · '+esc(g.detail)+'</span>':g.state==='post'?'<span class="tag">FINAL '+aw.score+'–'+hm.score+'</span>':'';
+        var lean=!ps.length?'<span class="rg-v neu">NO H2H</span>':(gfr.length&&!gag.length)?'<span class="rg-v for">ROOT FOR</span>':(gag.length&&!gfr.length)?'<span class="rg-v ag">PURE FADE</span>':net>=0.06?'<span class="rg-v for">LEAN FOR +'+Math.round(net*100)+'%</span>':net<=-0.06?'<span class="rg-v ag">LEAN FADE −'+Math.round(Math.abs(net)*100)+'%</span>':'<span class="rg-v mix">SPLIT / HEDGE</span>';
+        var meta=[(ETTIME.format(g.kick)+(g.kick._approx?'':' ET')),g.tv?esc(g.tv):'',g.line?esc(g.line):'',g.ou?'O/U '+g.ou:''].filter(Boolean).join(' · ');
+        var ws=(wByG[g.id]||[]).slice(0,3);
+        if(!ps.length&&!ws.length){
+          return '<div class="rg-game quiet"><div class="rg-gh"><div class="rg-gt">'+matchTitle+'</div><div class="rg-gr">'+stTag+lean+'</div></div><div class="small muted">'+meta+' · No starters in your matchups</div></div>'}
+        return '<div class="rg-game'+(g.state==='post'?' done':'')+'"><div class="rg-gh"><div class="rg-gt">'+matchTitle+'</div><div class="rg-gr">'+stTag+lean+'</div></div>'+
+          '<div class="rg-gm">'+meta+'</div>'+lionsNote(g,gfr,gag)+
+          (gfr.length?'<div class="rg-sec"><div class="rg-sh for">ROOT FOR ('+gfr.length+')</div>'+gfr.map(pRow).join('')+'</div>':'')+
+          (gag.length?'<div class="rg-sec"><div class="rg-sh ag">ROOT AGAINST ('+gag.length+')</div>'+gag.map(pRow).join('')+'</div>':'')+
+          (ws.length?'<div class="rg-watch">'+ws.map(function(w){return '<div>'+w.txt+'</div>'}).join('')+'</div>':'')+
+          '</div>'}).join('');
+      return '<div class="rg-day"><div class="rg-dh"><span>'+esc(title)+'</span>'+badge+'</div>'+cards+'</div>';
+    }).join('');
+  }
   var conf=rootPs.filter(function(P){return P.conf}).sort(function(a,b){return Math.abs(b.key)-Math.abs(a.key)});
   var confH=conf.length?conf.map(function(P){return '<div class="flag"><div class="ic">'+head(P.id)+'</div><div class="fx"><div class="ft">'+esc(P.line.pi.n)+' <span class="pill '+(P.key>=0?'g':'r')+'">'+(P.key>=0?'ROOT FOR':'ROOT AGAINST')+'</span> <span class="muted small">net '+(P.key>=0?'+':'−')+f1(Math.abs(P.key)*100)+'%</span></div><div class="small muted">'+P.ent.map(function(e){var s=P.done?e.base:e.imp;return '<span class="'+(s>=0?'pe':'ne')+'">'+(s>=0?'+':'−')+f1(Math.abs(s)*100)+'%</span> '+esc(e.L.name)+' ('+esc(e.tag)+')'}).join(' · ')+'</div></div></div>'}).join(''):'<div class="empty">No conflicts this week. Clean conscience.</div>';
   var flags=M.flags.slice().sort(function(a,b){var o={hi:0,md:1,lo:2};return o[a.sev]-o[b.sev]});
@@ -463,7 +545,7 @@ function renderSunday(el){
   var pkH=pk.length?'<section class="panel"><h2>🎯 Pick Watch <small><a href="#picks">ALL PICKS →</a></small></h2><div class="hint">Teams whose picks you own: a loss and a low max PF (best possible lineup, bench included) both move your pick earlier. Reference only; not part of the Rooting Guide.</div>'+(window.PWV?(function(){var cs=PWV.cards();return '<div class="small" style="margin:4px 0 8px">'+PWV.summary(cs)+'</div><div class="pwg">'+cs.slice(0,3).map(function(t){return PWV.card(t)}).join('')+'</div>'+(cs.length>3?'<a class="small" href="#live">+'+(cs.length-3)+' more on Live →</a>':'')})():pk.slice(0,4).map(pickRow).join(''))+pickRootHTML(pk,true)+'</section>':'';
   el.innerHTML=banner+callsSec+'<section class="panel"><h2>📺 Scoreboard <small>'+cards.length+' LEAGUES · EXP. WINS '+f1(rec.x)+'</small></h2><div class="sbs">'+cardsH+'</div><div class="hint" style="margin-top:6px">Tap a card for both lineups. Sorted by closest game. '+(isWindow()?'Auto-refreshing every 60s.':'Auto-refresh kicks in during game windows.')+'</div></section>'+
    newsStripHTML()+
-   '<section class="panel"><h2>📣 Rooting Guide <small>WEEK '+D.week+'</small></h2>'+chips+'<div class="cols">'+(UI.side!=='ag'?lst(fr,'for','ROOT FOR'):'')+(UI.side!=='for'?lst(ag,'ag','ROOT AGAINST'):'')+'</div><div class="hint">Head-to-head only: your starters are Root For, your opponents\' starters are Root Against. Impact = projected points still to come × how close that matchup is (win-probability swing), '+rootSumPhrase()+'. Pick Watch and Rival Watch stay in their own sections and don\'t move this list.</div></section>'+
+   '<section class="panel"><h2>📣 Rooting Guide <small>WEEK '+D.week+'</small></h2>'+chips+(side==='game'?byGameHTML():'<div class="cols">'+(side!=='ag'?lst(fr,'for','ROOT FOR'):'')+(side!=='for'?lst(ag,'ag','ROOT AGAINST'):'')+'</div>')+'<div class="hint">Head-to-head only: your starters are Root For, your opponents\' starters are Root Against. Impact = projected points still to come × how close that matchup is (win-probability swing), '+rootSumPhrase()+'. Pick Watch and Rival Watch stay in their own sections and don\'t move this list.</div></section>'+
    '<section class="panel"><h2>⚔️ Conflicts</h2>'+confH+'</section>'+
    pkH+skippedHTML();
   $$('#chips .chip',el).forEach(function(b){b.onclick=function(){UI.slot=b.getAttribute('data-s');renderSunday(el)}});
@@ -542,7 +624,7 @@ var EXTRA_TABS=[];// later modules push [key,icon,label,renderFn]
 function navHTML(){var all=TABS.concat(EXTRA_TABS),ord=typeof TAB_ORDER!=='undefined'?TAB_ORDER:null,by={};all.forEach(function(t){by[t[0]]=t});
   if(!ord)return all.map(navA).join('');var out=[],seen={};ord.forEach(function(g,gi){if(gi)out.push('<i class="tsep"></i>');g.forEach(function(k){if(by[k]){out.push(navA(by[k]));seen[k]=1}})});all.forEach(function(t){if(!seen[t[0]])out.push(navA(t))});return out.join('')}
 function navA(t){return '<a href="#'+t[0]+'" data-k="'+t[0]+'"><span>'+t[1]+'</span>'+t[2]+'</a>'}
-function defaultTab(){var wd=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',weekday:'short'}).format(new Date());var live=false;for(var t in D.games)if(D.games[t].state==='in')live=true;return (live||wd==='Sun'||wd==='Mon'||wd==='Thu')?'sunday':'home'}
+function defaultTab(){var etd=new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York'}),today=etd.format(new Date()),wd=_ETWD.format(new Date()),live=false,hasToday=false;for(var t in D.games){var g=D.games[t];if(g.state==='in')live=true;if(g.kick&&!g.kick._approx&&etd.format(g.kick)===today)hasToday=true}return (live||hasToday||wd==='Sun'||wd==='Mon'||wd==='Thu')?'sunday':'home'}
 function curTab(){var h=(location.hash||('#'+defaultTab())).slice(1).split('/')[0],all=TABS.concat(EXTRA_TABS);return all.filter(function(t){return t[0]===h})[0]||all[0]}
 function rerender(){var t=curTab(),el=$('#view');$$('#tabs a').forEach(function(a){a.className=a.getAttribute('data-k')===t[0]?'on':''});
   try{_lastSig=viewSig()}catch(e){}
