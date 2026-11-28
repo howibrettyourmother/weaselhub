@@ -294,3 +294,40 @@ body.cc-on #lgf{display:none}
 .rg-pi{text-align:right;white-space:nowrap;flex:0 0 auto;font-size:12.5px}
 .rg-pi small{display:block;font-size:11px}
 .rg-watch{margin-top:6px;padding-top:5px;border-top:1px dashed rgba(255,255,255,.09);font-size:11.5px;color:var(--mute);line-height:1.35}
+
+/* Playoff Machine (#machine) — same bracket component as SHADYNASTY HQ, Weasel Hub styling */
+.pm-lg{margin-bottom:16px}.pm-lg:last-child{margin-bottom:0}
+.pm-wk{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px 0 10px}.pm-wk::-webkit-scrollbar{display:none}
+.pm-g{display:grid;gap:8px;min-width:0}@media(min-width:760px){.pm-g{grid-template-columns:1fr 1fr}}
+.pm-m{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:stretch;gap:6px;min-width:0}
+.pm-v{align-self:center;color:var(--mute);font:700 12px var(--disp)}
+.pm-s{display:flex;align-items:center;gap:8px;min-width:0;min-height:56px;padding:8px 8px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--ink);text-align:left;cursor:pointer;transition:background .15s,border-color .15s,opacity .15s;-webkit-tap-highlight-color:transparent}
+.pm-s .av{flex:0 0 auto;margin:0;width:26px;height:26px;border-radius:50%;object-fit:cover;background:#222;border:1px solid rgba(255,255,255,.25)}
+.pm-s b{display:block;font:700 14px/1.15 var(--disp);letter-spacing:.03em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pm-s small{color:var(--mute);font-size:11px}
+.pm-s.win{background:linear-gradient(180deg,rgba(60,200,120,.28),rgba(60,200,120,.10));border-color:rgba(60,200,120,.7)}.pm-s.win b:after{content:" ✓";color:#8ff0b5}
+.pm-s.lose{opacity:.45}.pm-s.me{border-color:rgba(255,199,44,.55)}
+.pm-act{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 10px}
+.pm-sum{font-size:13px;color:var(--ink);margin:8px 0}
+.pm-t .stn{display:inline-flex;align-items:center;gap:6px;max-width:200px}.pm-t .av{width:22px;height:22px;border-radius:50%;object-fit:cover;flex:0 0 22px;margin:0;border:1px solid rgba(255,255,255,.25);background:#222}
+.pm-br{display:flex;gap:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;max-width:100%;padding:4px 0 10px;scrollbar-width:thin}
+.pm-brc{flex:0 0 min(248px,82vw);min-width:0}
+.pm-brc h4{margin:0 0 8px;font:700 11px/1.2 var(--disp);letter-spacing:.08em;color:var(--gold)}
+.pm-brg{display:flex;flex-direction:column;gap:8px}
+.pm-brm{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:rgba(255,255,255,.04)}
+.pm-brm.fin{border-color:rgba(255,199,44,.7);box-shadow:0 0 0 1px rgba(255,199,44,.2)}
+.pm-brh{font:700 10px/1.2 var(--disp);letter-spacing:.08em;color:var(--mute);padding:6px 10px;background:rgba(0,0,0,.28)}
+.pm-bs{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:6px 10px;border-top:1px solid var(--line)}
+.pm-brm .pm-bs:first-of-type{border-top:0}
+.pm-bs.tbd{color:var(--mute);font-style:italic;font-size:13px}
+.pm-bs.me{background:rgba(255,199,44,.08)}
+.pm-bn{display:flex;align-items:center;gap:8px;min-width:0}
+.pm-bn .av{flex:0 0 auto;margin:0;width:26px;height:26px;border-radius:50%;object-fit:cover;background:#222;border:1px solid rgba(255,255,255,.25)}
+.pm-bn b{font:700 13px/1.15 var(--disp);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pm-bm{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+.pm-bm em{font:700 11px var(--disp);color:var(--gold);font-style:normal}
+.pm-bp{font:700 10px/1 var(--disp);color:var(--mute);background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:999px;padding:2px 6px}
+.pm-bye{display:flex;flex-direction:column;gap:0;padding:0;border:1px dashed rgba(255,199,44,.45);border-radius:12px;background:rgba(255,199,44,.06);overflow:hidden}
+.pm-bye strong{display:block;font:700 10px/1.2 var(--disp);letter-spacing:.08em;color:var(--gold);padding:6px 10px;background:rgba(255,199,44,.08)}
+.pm-bye .pm-bs{border-top:1px solid rgba(255,199,44,.2)}
+.pm-bye .pm-bs:first-of-type{border-top:0}
+@media(min-width:900px){.pm-brc{flex:1 1 0}}

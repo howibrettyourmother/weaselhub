@@ -2,7 +2,7 @@
 // Weasel Hub round 5, navigation: 5 groups (Today / Leagues / Moves / Draft / More). Phone: fixed bottom bar for the groups and
 // only the current group's tabs up top. Desktop: one row with group separators. Every old #hash URL still works.
 (function(){
-var G=[['today','🏈','TODAY',['home','sunday','live']],['leagues','📊','LEAGUES',['standings','rosters','scout','exposure']],['moves','🔁','MOVES',['trade','find','waivers']],['draft','🎓','DRAFT',['picks','draft']],['more','🗞️','MORE',['news','recap','coach']]];
+var G=[['today','🏈','TODAY',['home','sunday','live']],['leagues','📊','LEAGUES',['standings','machine','rosters','scout','exposure']],['moves','🔁','MOVES',['trade','find','waivers']],['draft','🎓','DRAFT',['picks','draft']],['more','🗞️','MORE',['news','recap','coach']]];
 window.TAB_ORDER=G.map(function(g){return g[3].slice()});
 var LAST=LS.get('wh:navlast')||{};
 function grpOf(k){for(var i=0;i<G.length;i++)if(G[i][3].indexOf(k)>=0)return G[i];return G[0]}
