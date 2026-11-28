@@ -7,7 +7,7 @@ Screenshots go to ./smoke-shots/ (git-ignored). Uses a normal browser user agent
 import asyncio, os, sys
 from playwright.async_api import async_playwright
 BASE = sys.argv[1] if len(sys.argv) > 1 else 'https://howibrettyourmother.github.io/weaselhub/'
-TABS = ['home', 'sunday', 'live', 'standings', 'machine', 'rosters', 'scout', 'exposure', 'trade', 'find', 'waivers', 'picks', 'draft', 'news', 'recap', 'coach']
+TABS = ['home', 'sunday', 'live', 'standings', 'whatif', 'machine', 'rosters', 'scout', 'exposure', 'trade', 'find', 'waivers', 'picks', 'draft', 'news', 'recap', 'coach']
 UA_PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
 UA_DESK = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36'
 OUT = 'smoke-shots'

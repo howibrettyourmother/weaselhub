@@ -9,7 +9,8 @@ Read-only: nothing here posts to Sleeper or messages anyone. "Propose / Set line
 | Group | Tabs (`#hash`) |
 |---|---|
 | Today | `#home` lineup briefing, league snapshot, deadline alert · `#sunday` start/sit calls, scoreboard, rooting guide · `#live` live games, Pick Watch, who's left |
-| Leagues | `#standings` every team: record, PF, max PF, playoff + #1-seed odds, projected rookie slot · `#machine` Playoff Machine: pick remaining winners in each league, projected playoff + Toilet Bowl brackets · `#rosters` values, holes, bye planner · `#scout` leaguemate buy/sell reads · `#exposure` value tracker, concentration, contracts, risk |
+| Leagues | `#standings` every team: record, PF, max PF, playoff + #1-seed odds, projected rookie slot · `#rosters` values, holes, bye planner · `#scout` leaguemate buy/sell reads · `#exposure` value tracker, concentration, contracts, risk |
+| What If | `#whatif` pick remaining winners in each league, projected playoff + Toilet Bowl brackets, and a projected 2027 rookie draft order (non-playoff teams by lowest max PF, then playoff finish). Old `#machine` URLs redirect here. |
 | Moves | `#trade` deadlines, Trade Finder (all leagues) · `#find/<sleeper id>` player finder: owner + value in every league, trade route · `#waivers` best FAs per league, bye-week targets |
 | Draft | `#picks` Pick Watch for every 1st/2nd you own, all picks + values · `#draft` rookie war room: projected order, mock, live assistant |
 | More | `#news` injury/status feed on your players · `#recap` last week's report cards · `#coach` Coaches Corner (Dynasty Guru's game plan) |

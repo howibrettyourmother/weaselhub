@@ -262,7 +262,8 @@ body.cc-on #lgf{display:none}
   #tabs a{flex-direction:row;gap:5px;min-height:38px;min-width:0;padding:4px 12px;font-size:12px}
   #tabs a span{font-size:15px}
   body[data-grp] #tabs a{display:none}
-  body[data-grp="today"] #tabs a[data-g="today"],body[data-grp="leagues"] #tabs a[data-g="leagues"],body[data-grp="moves"] #tabs a[data-g="moves"],body[data-grp="draft"] #tabs a[data-g="draft"],body[data-grp="more"] #tabs a[data-g="more"]{display:flex}
+  body[data-grp="today"] #tabs a[data-g="today"],body[data-grp="leagues"] #tabs a[data-g="leagues"],body[data-grp="whatif"] #tabs a[data-g="whatif"],body[data-grp="moves"] #tabs a[data-g="moves"],body[data-grp="draft"] #tabs a[data-g="draft"],body[data-grp="more"] #tabs a[data-g="more"]{display:flex}
+  body[data-grp="whatif"] #tabs{display:none}
   #toast{bottom:calc(76px + env(safe-area-inset-bottom))!important}
 }
 @media(min-width:700px){#tabs{flex-wrap:wrap;justify-content:center;row-gap:2px}}
@@ -347,3 +348,28 @@ button.pm-bs:focus-visible{outline:2px solid var(--gold);outline-offset:-2px}
 .pm-crown.tb{color:#e4c8ff;background:linear-gradient(180deg,rgba(160,100,255,.22),rgba(80,40,120,.12));border-top-color:rgba(200,160,255,.45)}
 .pm-champ{scroll-margin-bottom:88px}
 .pm-lg{padding-bottom:72px}
+@media(max-width:520px){#bnav a{font-size:9px;letter-spacing:.04em;padding:2px 0}}
+/* What If sticky section chips + projected draft order */
+.pm-jump{position:sticky;top:calc(env(safe-area-inset-top) + 92px);z-index:25;display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:8px 0 10px;margin:0 0 10px;background:linear-gradient(180deg,#05070d 70%,rgba(5,7,13,.92))}
+.pm-jump::-webkit-scrollbar{display:none}
+.pm-jump .chip{flex:0 0 auto;min-height:36px}
+[data-wi]{scroll-margin-top:calc(env(safe-area-inset-top) + 148px)}
+.pm-yours{margin:8px 0 12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,199,44,.45);background:rgba(255,199,44,.1);font:700 14px/1.4 var(--disp);color:var(--gold)}
+.pm-yours.mute{border-color:var(--line);background:rgba(255,255,255,.03);color:var(--mute);font-weight:600}
+.pm-yours b{color:#fff}
+.pm-draftx h3,.pm-draftx h4{margin:14px 0 8px}
+.pm-draftx h4{font:700 11px/1.2 var(--disp);letter-spacing:.08em;color:var(--gold)}
+.pm-dl{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.pm-di{display:grid;grid-template-columns:64px minmax(0,1fr) auto;align-items:center;gap:8px;min-height:44px;padding:6px 10px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.03)}
+.pm-di.me,.pm-di.wz{border-color:rgba(255,199,44,.55);background:rgba(255,199,44,.1)}
+.pm-dk{display:flex;flex-direction:column;gap:1px}
+.pm-dk b{font:700 14px/1.1 var(--disp);color:var(--gold)}
+.pm-dk .pm-dr{font:600 10px/1.2 var(--disp);color:var(--mute)}
+.pm-dn{display:flex;align-items:center;gap:8px;min-width:0}
+.pm-dn .av,.pm-di img{flex:0 0 auto;width:28px;height:28px;border-radius:50%;object-fit:cover}
+.pm-dn b{font:700 13px/1.15 var(--disp);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+.pm-dn small{display:block;color:var(--mute);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pm-dx{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+.pm-dx em{font:700 11px/1 var(--disp);font-style:normal;color:var(--mute);white-space:nowrap}
+.pm-dx em i{font-style:normal;font-size:9px;letter-spacing:.06em;color:var(--gold);margin-left:2px}
+.pm-tb13{margin-top:12px}

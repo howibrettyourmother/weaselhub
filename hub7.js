@@ -2,7 +2,7 @@
 // Weasel Hub round 5, navigation: 5 groups (Today / Leagues / Moves / Draft / More). Phone: fixed bottom bar for the groups and
 // only the current group's tabs up top. Desktop: one row with group separators. Every old #hash URL still works.
 (function(){
-var G=[['today','🏈','TODAY',['home','sunday','live']],['leagues','📊','LEAGUES',['standings','machine','rosters','scout','exposure']],['moves','🔁','MOVES',['trade','find','waivers']],['draft','🎓','DRAFT',['picks','draft']],['more','🗞️','MORE',['news','recap','coach']]];
+var G=[['today','🏈','TODAY',['home','sunday','live']],['leagues','📊','LEAGUES',['standings','rosters','scout','exposure']],['whatif','🔮','WHAT IF',['whatif']],['moves','🔁','MOVES',['trade','find','waivers']],['draft','🎓','DRAFT',['picks','draft']],['more','🗞️','MORE',['news','recap','coach']]];
 window.TAB_ORDER=G.map(function(g){return g[3].slice()});
 var LAST=LS.get('wh:navlast')||{};
 function grpOf(k){for(var i=0;i<G.length;i++)if(G[i][3].indexOf(k)>=0)return G[i];return G[0]}
@@ -16,7 +16,7 @@ function build(){$('#tabs').innerHTML=navHTML();if(!$('#bnav')){var n=document.c
   paint()}
 build();addEventListener('hashchange',paint);
 // ---------- retired views: old hash names go to the tab that replaced them ----------
-var ALIAS={desk:'trade',tradedesk:'trade',fleece:'trade',portfolio:'exposure',alerts:'exposure',valuealerts:'exposure'};
-function alias(){var h=(location.hash||'').slice(1).split('/')[0].toLowerCase();if(ALIAS[h])location.replace('#'+ALIAS[h])}
+var ALIAS={desk:'trade',tradedesk:'trade',fleece:'trade',portfolio:'exposure',alerts:'exposure',valuealerts:'exposure',machine:'whatif',scenarios:'whatif'};
+function alias(){var raw=(location.hash||'').slice(1),h=raw.split('/')[0].toLowerCase();if(ALIAS[h])location.replace('#'+ALIAS[h]+raw.slice(h.length))}
 alias();addEventListener('hashchange',alias);
 })();
