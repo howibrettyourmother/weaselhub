@@ -30,17 +30,44 @@ function likelySeeds(T,S,CL,locked){var ids=Object.keys(T).map(Number),n=ids.len
   return out}
 function avHTML(t){return t&&t.av?'<img class="av" src="'+esc(t.av)+'" alt="" loading="lazy" referrerpolicy="no-referrer">':''}
 function brLab(m,kind){return m.p===1?(kind==='tb'?'🚽 TOILET BOWL FINAL':'🏆 CHAMPIONSHIP'):m.p?(kind==='tb'?'Consolation · ':'')+m.p+(m.p===3?'rd':'th')+' place':''}
-function brRow(seed,from,L,T){if(from){var id=from.w||from.l;return '<div class="pm-bs tbd"><i>'+(from.w?'Winner':'Loser')+' of M'+id+'</i></div>'}
-  var x=seed&&L[seed],t=x&&T[x.rid];if(!t)return '<div class="pm-bs tbd"><i>'+(seed?'TBD · #'+seed:'TBD')+'</i></div>';
-  return '<div class="pm-bs'+(t.me?' me':'')+'"><span class="pm-bn">'+avHTML(t)+'<b>'+esc(t.team)+'</b></span><span class="pm-bm"><em>#'+seed+'</em>'+(x.locked?'':'<small class="pm-bp">'+pc(x.p)+'</small>')+'</span></div>'}
 function byeSeedsOf(br){var seen={},byes=[];(br||[]).slice().sort(function(a,b){return a.r-b.r||a.m-b.m}).forEach(function(m){if(m.r>1){if(m.s1&&!m.t1_from&&!seen[m.s1])byes.push(m.s1);if(m.s2&&!m.t2_from&&!seen[m.s2])byes.push(m.s2)}if(m.s1)seen[m.s1]=1;if(m.s2)seen[m.s2]=1});return byes}
 function winnersAdvance(br){return (br||[]).some(function(m){return (m.t1_from&&m.t1_from.w)||(m.t2_from&&m.t2_from.w)})}
-function drawBracket(el,br,L,T,st,kind){if(!(br||[]).length){el.innerHTML='<div class="hint">Sleeper hasn\'t published this bracket yet.</div>';return}
-  var rounds={};br.forEach(function(m){(rounds[m.r]=rounds[m.r]||[]).push(m)});var byes=byeSeedsOf(br);
+function resolveSide(from,seed,br,seeds,T,picks,cache){
+  if(from){var mid=from.w||from.l,src=(br||[]).filter(function(x){return x.m===mid})[0];if(!src)return null;
+    var occ=resolveMatch(src,br,seeds,T,picks,cache);if(!occ.a||!occ.b)return null;
+    var pick=picks[src.m];
+    if(pick!=null){var w=occ.a.rid===pick?occ.a:occ.b.rid===pick?occ.b:null;if(!w)return null;var l=w===occ.a?occ.b:occ.a,x=from.w?w:l;return {rid:x.rid,seed:x.seed,chalk:false,t:T[x.rid]}}
+    var hi=occ.a.seed<=occ.b.seed?occ.a:occ.b,lo=hi===occ.a?occ.b:occ.a,x=from.w?hi:lo;
+    return {rid:x.rid,seed:x.seed,chalk:true,t:T[x.rid]}}
+  if(seed){var s=seeds[seed],t=s&&T[s.rid];return t?{rid:t.rid,seed:seed,chalk:false,t:t,p:s.p,locked:s.locked}:null}
+  return null}
+function resolveMatch(m,br,seeds,T,picks,cache){if(cache[m.m])return cache[m.m];cache[m.m]={a:null,b:null,m:m};
+  cache[m.m].a=resolveSide(m.t1_from,m.s1,br,seeds,T,picks,cache);cache[m.m].b=resolveSide(m.t2_from,m.s2,br,seeds,T,picks,cache);return cache[m.m]}
+function prunePicks(br,seeds,T,picks){var cache={},order=(br||[]).slice().sort(function(a,b){return a.r-b.r||a.m-b.m});
+  order.forEach(function(m){var occ=resolveMatch(m,br,seeds,T,picks,cache),w=picks[m.m];
+    if(w!=null&&!((occ.a&&occ.a.rid===w)||(occ.b&&occ.b.rid===w)))delete picks[m.m]})}
+function champOf(br,seeds,T,picks,adv){var fin=(br||[]).filter(function(m){return m.p===1})[0];if(!fin||picks[fin.m]==null)return null;
+  var occ=resolveMatch(fin,br,seeds,T,picks,{}),w=picks[fin.m];
+  var winner=(occ.a&&occ.a.rid===w)?occ.a:(occ.b&&occ.b.rid===w)?occ.b:null,loser=winner&&winner===occ.a?occ.b:occ.a;
+  var champ=adv===false?loser:winner;return champ&&champ.t?champ:null}
+function brPickRow(side,m,kind,picks,canPick){if(!side||!side.t)return '<div class="pm-bs tbd"><i>TBD</i></div>';
+  var t=side.t,picked=picks[m.m],win=picked===t.rid,lose=picked!=null&&picked!==t.rid;
+  var cls=['pm-bs',win?'win':'',lose?'lose':'',side.chalk&&picked==null?'chalk':'',t.me?'me':''].filter(Boolean).join(' ');
+  var pct=!side.chalk&&side.p!=null&&!side.locked?'<small class="pm-bp">'+pc(side.p)+'</small>':'';
+  var inner='<span class="pm-bn">'+avHTML(t)+'<b>'+esc(t.team)+'</b></span><span class="pm-bm"><em>#'+side.seed+'</em>'+pct+'</span>';
+  return canPick?'<button type="button" class="'+cls+'" data-kind="'+kind+'" data-m="'+m.m+'" data-r="'+t.rid+'" aria-pressed="'+win+'">'+inner+'</button>':'<div class="'+cls+'">'+inner+'</div>'}
+function drawBracket(el,br,seeds,T,st,kind,picks,adv){picks=picks||{};if(!(br||[]).length){el.innerHTML='<div class="hint">Sleeper hasn\'t published this bracket yet.</div>';return}
+  var cache={},rounds={};br.forEach(function(m){(rounds[m.r]=rounds[m.r]||[]).push(m)});var byes=byeSeedsOf(br);
   el.innerHTML=Object.keys(rounds).sort(function(a,b){return a-b}).map(function(r){var wk=poWeek(st,+r);
-    var games=rounds[r].sort(function(a,b){return (a.p||0)-(b.p||0)||a.m-b.m}).map(function(m){return '<div class="pm-brm'+(m.p===1?' fin':'')+'"><div class="pm-brh">M'+m.m+(brLab(m,kind)?' · '+brLab(m,kind):'')+'</div>'+brRow(m.s1,m.t1_from,L,T)+brRow(m.s2,m.t2_from,L,T)+'</div>'}).join('');
-    var byeBox=+r===1&&byes.length?'<div class="pm-bye"><strong>FIRST-ROUND BYES</strong>'+byes.map(function(s){var x=L[s],t=x&&T[x.rid];return t?'<div class="pm-bs'+(t.me?' me':'')+'">'+avHTML(t)+'<span class="pm-bn"><b>'+esc(t.team)+'</b></span><span class="pm-bm"><em>#'+s+'</em>'+(x.locked?'':'<small class="pm-bp">'+pc(x.p)+'</small>')+'<span class="pill y">BYE</span></span></div>':'<div class="pm-bs tbd"><i>TBD · #'+s+'</i></div>'}).join('')+'</div>':'';
+    var games=rounds[r].sort(function(a,b){return (a.p||0)-(b.p||0)||a.m-b.m}).map(function(m){var occ=resolveMatch(m,br,seeds,T,picks,cache),can=!!(occ.a&&occ.a.t&&occ.b&&occ.b.t);
+      var cr='';if(m.p===1&&picks[m.m]!=null&&occ.a&&occ.b){var w=picks[m.m],winner=occ.a.rid===w?occ.a:occ.b,loser=winner===occ.a?occ.b:occ.a,champ=adv===false?loser:winner;if(champ&&champ.t)cr=kind==='tb'?'<div class="pm-crown tb">🚽 '+esc(champ.t.team)+' '+(adv===false?'takes the Toilet Bowl':'wins the Toilet Bowl')+'</div>':'<div class="pm-crown">👑 '+esc(champ.t.team)+' is your projected champion</div>'}
+      return '<div class="pm-brm'+(m.p===1?' fin':'')+'"><div class="pm-brh">M'+m.m+(brLab(m,kind)?' · '+brLab(m,kind):'')+'</div>'+brPickRow(occ.a,m,kind,picks,can)+brPickRow(occ.b,m,kind,picks,can)+cr+'</div>'}).join('');
+    var byeBox=+r===1&&byes.length?'<div class="pm-bye"><strong>FIRST-ROUND BYES</strong>'+byes.map(function(s){var x=seeds[s],t=x&&T[x.rid];return t?'<div class="pm-bs'+(t.me?' me':'')+'">'+avHTML(t)+'<span class="pm-bn"><b>'+esc(t.team)+'</b></span><span class="pm-bm"><em>#'+s+'</em>'+(x.locked?'':'<small class="pm-bp">'+pc(x.p)+'</small>')+'<span class="pill y">BYE</span></span></div>':'<div class="pm-bs tbd"><i>TBD · #'+s+'</i></div>'}).join('')+'</div>':'';
     return '<div class="pm-brc"><h4>ROUND '+r+' · WEEK '+wk+'</h4><div class="pm-brg">'+games+byeBox+'</div></div>'}).join('')}
+function paintChamp(el,br,seeds,T,picks,kind,adv){if(!el)return;var c=champOf(br,seeds,T,picks,adv);
+  if(!c||!c.t){el.innerHTML='';el.hidden=true;return}el.hidden=false;
+  if(kind==='tb'){el.className='pm-champ tb';el.innerHTML='🚽 <b>'+esc(c.t.team)+'</b> '+(adv===false?'takes the Toilet Bowl (losers advance)':'wins the Toilet Bowl')}
+  else{el.className='pm-champ';el.innerHTML='👑 <b>'+esc(c.t.team)+'</b> is your projected champion'}}
 function clinch(T,games,pt,locks){var ids=Object.keys(T).map(Number),W={},Rm={};ids.forEach(function(i){W[i]=T[i].w+(T[i].t||0)/2;Rm[i]=0});
   games.forEach(function(g){var L=locks&&locks[g.k];if(L!=null)W[+L]++;else{Rm[g.a]++;Rm[g.b]++}});
   var out={},ord=ids.slice().sort(function(a,b){return W[b]-W[a]||T[b].pf-T[a].pf});
@@ -93,12 +120,24 @@ function mountLeague(box,L,arg){var T=teamMap(L),pt=ptOf(L),pws=pwsOf(L),st=S_(L
       '<div class="pm-sum hint"></div>'+
       '<div class="tw"><table class="stt pm-t"><thead><tr><th>#</th><th class="w">Team</th><th>W-L</th><th>Playoffs</th><th>Status</th></tr></thead><tbody></tbody></table></div>'+
       '<h3>🏆 Projected playoff bracket</h3>'+
-      '<div class="hint">'+pt+'-team Sleeper bracket, '+rMax+' round'+(rMax===1?'':'s')+' in weeks '+wk0+'–'+wkN+' ('+((+st.playoff_round_type||0)===2?'two weeks per round':'one week per round')+'). '+byeNote+'Seeded by wins, then points for — same tiebreak as Standings. A % means that seed isn\'t locked; that\'s the likeliest team.</div>'+
+      '<div class="hint">'+pt+'-team Sleeper bracket, '+rMax+' round'+(rMax===1?'':'s')+' in weeks '+wk0+'–'+wkN+' ('+((+st.playoff_round_type||0)===2?'two weeks per round':'one week per round')+'). '+byeNote+'Seeded by wins, then points for — same tiebreak as Standings. A % means that seed isn\'t locked; that\'s the likeliest team. <b>Tap a team in any matchup to advance them</b> to the final. Unpicked games default to the higher seed, shown faintly in later rounds. Changing a seed or an earlier pick clears later picks that no longer fit.</div>'+
+      '<div class="pm-act pm-bact"><button type="button" class="chip" data-a="resetpo">↺ Reset playoff bracket</button></div>'+
       '<div class="pm-br" data-br="po" role="region" aria-label="Projected playoff bracket"></div>'+
+      '<div class="pm-champ" data-champ="po" hidden></div>'+
       '<h3>🚽 Projected Toilet Bowl</h3>'+
-      '<div class="hint">'+tbN+'-team losers bracket from Sleeper ('+tbAdv+').'+(tbByes.length?' Seeds '+(pt+1)+'–'+(pt+tbByes.length)+' (best of the misses) get byes.':'')+'</div>'+
-      '<div class="pm-br" data-br="tb" role="region" aria-label="Projected Toilet Bowl bracket"></div>';
+      '<div class="hint">'+tbN+'-team losers bracket from Sleeper ('+tbAdv+').'+(tbByes.length?' Seeds '+(pt+1)+'–'+(pt+tbByes.length)+' (best of the misses) get byes.':'')+' Tap a team to pick the game winner; the '+(tbAdv==='winners advance'?'winner':'loser')+' of the final is the Toilet Bowl champ.</div>'+
+      '<div class="pm-act pm-bact"><button type="button" class="chip" data-a="resettb">↺ Reset Toilet Bowl bracket</button></div>'+
+      '<div class="pm-br" data-br="tb" role="region" aria-label="Projected Toilet Bowl bracket"></div>'+
+      '<div class="pm-champ tb" data-champ="tb" hidden></div>';
     var wkEl=$('.pm-wk',box),gEl=$('.pm-g',box),tb=$('.pm-t tbody',box),sum=$('.pm-sum',box),poEl=$('[data-br="po"]',box),tbEl=$('[data-br="tb"]',box);
+    var poChamp=$('[data-champ="po"]',box),tbChamp=$('[data-champ="tb"]',box),tbAdvW=tbAdv==='winners advance';
+    var bpicks=(function(){var p=LS.get('wh:brack:'+L.id)||{};return {po:p.po&&typeof p.po==='object'?p.po:{},tb:p.tb&&typeof p.tb==='object'?p.tb:{}}})();
+    var seedsNow=null;
+    function saveBrack(){LS.set('wh:brack:'+L.id,{po:bpicks.po,tb:bpicks.tb})}
+    function drawBrackets(){if(!seedsNow)return;
+      prunePicks(wb,seedsNow,T,bpicks.po);prunePicks(lb,seedsNow,T,bpicks.tb);saveBrack();
+      if(poEl)drawBracket(poEl,wb,seedsNow,T,st,'po',bpicks.po,true);if(tbEl)drawBracket(tbEl,lb,seedsNow,T,st,'tb',bpicks.tb,tbAdvW);
+      paintChamp(poChamp,wb,seedsNow,T,bpicks.po,'po',true);paintChamp(tbChamp,lb,seedsNow,T,bpicks.tb,'tb',tbAdvW)}
     function save(){LS.set(LK(L),locks);try{var s=enc(locks,G);history.replaceState(null,'','#machine/'+L.id+(s?'/'+s:''))}catch(e){}}
     function drawWeeks(){if(!wkEl)return;wkEl.innerHTML=weeks.map(function(w){var nP=G.filter(function(g){return g.w===w&&locks[g.k]!=null}).length,t=G.filter(function(g){return g.w===w}).length;
       return '<button type="button" role="tab" class="chip'+(w===wk?' on':'')+'" data-w="'+w+'">WK '+w+(nP?' <small>'+nP+'/'+t+'</small>':'')+'</button>'}).join('')}
@@ -111,12 +150,16 @@ function mountLeague(box,L,arg){var T=teamMap(L),pt=ptOf(L),pws=pwsOf(L),st=S_(L
         return '<tr class="'+(t.me?'me':'')+(k===pt-1?' pline':'')+'"><td>'+(k+1)+'</td><td class="w"><span class="stn">'+avHTML(t)+' '+esc(t.team)+'</span></td><td>'+(t.w+wl)+'-'+(t.l+lost)+'</td><td><b>'+pc(s.po)+'</b></td><td>'+chip(c,T)+'</td></tr>'}).join('');
       var np=Object.keys(locks).length,baseCL=clinch(T,G,pt,{}),newly=ids.filter(function(i){return CL[i].po&&!baseCL[i].po}).map(function(i){return T[i].team}),gone=ids.filter(function(i){return CL[i].elim&&!baseCL[i].elim}).map(function(i){return T[i].team});
       if(sum)sum.innerHTML=over?'Final regular-season seeds.':(np?'<b>'+np+'</b> game'+(np===1?'':'s')+' picked.'+(newly.length?' Clinches: <b>'+newly.map(esc).join(', ')+'</b>.':'')+(gone.length?' Eliminates: <b>'+gone.map(esc).join(', ')+'</b>.':'')+(!newly.length&&!gone.length?' Nobody clinches or gets eliminated yet.':''):'No picks yet: these are the current odds. Tap a team to make them win.');
-      var seeds=likelySeeds(T,S,CL,!over&&np===G.length&&G.length>0);
-      if(poEl)drawBracket(poEl,wb,seeds,T,st,'po');if(tbEl)drawBracket(tbEl,lb,seeds,T,st,'tb')}
+      seedsNow=likelySeeds(T,S,CL,!over&&np===G.length&&G.length>0);
+      drawBrackets()}
     var tm=0;function later(){clearTimeout(tm);tm=setTimeout(run,30)}
-    box.addEventListener('click',function(e){var s=e.target.closest('.pm-s');if(s){var k=s.getAttribute('data-k'),r=+s.getAttribute('data-r');if(locks[k]===r)delete locks[k];else locks[k]=r;save();drawWeeks();drawGames();later();return}
+    box.addEventListener('click',function(e){var bp=e.target.closest('button.pm-bs[data-m]');
+      if(bp){e.stopPropagation();var kind=bp.getAttribute('data-kind'),m=+bp.getAttribute('data-m'),r=+bp.getAttribute('data-r'),P=bpicks[kind]||(bpicks[kind]={});if(P[m]===r)delete P[m];else P[m]=r;drawBrackets();return}
+      var s=e.target.closest('.pm-s');if(s){var k=s.getAttribute('data-k'),r=+s.getAttribute('data-r');if(locks[k]===r)delete locks[k];else locks[k]=r;save();drawWeeks();drawGames();later();return}
       var w=e.target.closest('[data-w]');if(w){wk=+w.getAttribute('data-w');drawWeeks();drawGames();return}
       var a=e.target.closest('[data-a]');if(!a)return;var act=a.getAttribute('data-a');
+      if(act==='resetpo'){bpicks.po={};drawBrackets();return}
+      if(act==='resettb'){bpicks.tb={};drawBrackets();return}
       if(act==='chalk')G.filter(function(g){return g.w===wk}).forEach(function(g){locks[g.k]=ppg(T[g.a])>=ppg(T[g.b])?g.a:g.b});
       if(act==='clrw')G.filter(function(g){return g.w===wk}).forEach(function(g){delete locks[g.k]});if(act==='clr')locks={};
       if(act==='share'){var u=location.href.split('#')[0]+'#machine/'+L.id+'/'+enc(locks,G);(navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject()).then(function(){toast('🔗 Scenario link copied')}).catch(function(){toast('Copy this: '+esc(u),6000)});return}
@@ -126,7 +169,7 @@ function mountLeague(box,L,arg){var T=teamMap(L),pt=ptOf(L),pws=pwsOf(L),st=S_(L
 function hashArg(){var p=(location.hash||'').replace(/^#/,'').split('/');return p[0]==='machine'&&p[1]?{id:p[1],enc:decodeURIComponent(p[2]||'')}:null}
 function renderMachine(el){if(!D.leagues.length){el.innerHTML='<div class="panel empty">No active leagues.</div>';return}
   var arg=hashArg();
-  el.innerHTML='<section class="panel pm-page"><h2>🔮 Playoff Machine <small>WEEK '+D.week+'</small></h2><div class="hint">Pick the winners of any remaining regular-season game in each league and watch the projected playoff and Toilet Bowl brackets move. Format comes from that league\'s own Sleeper playoff settings and live brackets. Seeded by wins, then points for — same tiebreak as <a href="#standings">Standings</a>. The header chips filter which leagues appear. Nothing is sent to Sleeper.</div><div id="pm-root">'+
+  el.innerHTML='<section class="panel pm-page"><h2>🔮 Playoff Machine <small>WEEK '+D.week+'</small></h2><div class="hint">Pick remaining regular-season winners, then tap teams in the playoff and Toilet Bowl brackets to advance them to the final. Format comes from that league\'s own Sleeper playoff settings and live brackets. Seeded by wins, then points for — same tiebreak as <a href="#standings">Standings</a>. The header chips filter which leagues appear. Nothing is sent to Sleeper.</div><div id="pm-root">'+
     D.leagues.map(function(L){return '<div class="box stbox pm-lg" data-lg="'+L.id+'"><div class="spin">Loading '+esc(L.name)+'…</div></div>'}).join('')+'</div></section>';
   D.leagues.forEach(function(L){mountLeague($('.pm-lg[data-lg="'+L.id+'"]',el),L,arg&&arg.id===L.id?arg.enc:null)})}
 
